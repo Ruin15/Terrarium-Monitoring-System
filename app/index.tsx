@@ -1,233 +1,457 @@
-
-import { Box } from "@/components/ui/box";
-import { HStack } from "@/components/ui/hstack";
-import { VStack } from "@/components/ui/vstack";
-import React from "react";
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { Switch } from '@/components/ui/switch';
+import React, { useState } from 'react'
 import {
-  Slider,
-  SliderTrack,
-  SliderFilledTrack,
-  SliderThumb,
-} from '@/components/ui/slider';
-import { centerStyle } from "@/components/ui/center/styles";
-import { Settings } from 'lucide-react-native';
-import DateDisplay from "@/components/myComponents/DisplayDate/DisplayDate";
+  Text,
+  TextInput,
+  StyleSheet,
+  Image,
+  useWindowDimensions,
+  View,
+} from 'react-native'
+import { signInWithEmailAndPassword } from 'firebase/auth'
+import { auth, db } from '@/firebase/firebaseConfig'
+import { useRouter } from 'expo-router'
+import {
+  Toast,
+  ToastTitle,
+  ToastDescription,
+  useToast,
+} from '@/components/ui/toast'
+import {
+  Modal,
+  ModalBackdrop,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
+  ModalFooter,
+} from '@/components/ui/modal'
+import { HStack } from '@/components/ui/hstack'
+import { VStack } from '@/components/ui/vstack'
+import { CloseIcon, HelpCircleIcon, Icon } from '@/components/ui/icon'
+import { Box } from '@/components/ui/box'
+import { ButtonText } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
+import { Divider } from '@/components/ui/divider'
+import { Heading } from '@/components/ui/heading'
+// import { useUser } from '@/context/profileContext'
+import { collection, query, where, getDoc, doc } from 'firebase/firestore'
+import ForgotPasswordModal from '@/modals/forgotPasswordModal'
 
-
-
-export default function homepage() {
-
-
+export default function LoginScreen() {
   const dimensions = useWindowDimensions()
-  const largeScreen = dimensions.width > 768; // tablet UI condition
-  const mobileScreen = dimensions.width < 768;
-
-
-  const styles =  StyleSheet.create({
-    ControlContainer: {
-      // backgroundColor: "#dfdfdfff",
-      // flex: 1,
-      borderWidth: 1,
-      borderColor: "red",
-      gap: 12,
-      padding: 16,
-      borderRadius: 12,
-      minHeight: 270,
-      maxHeight: "auto",
-      width: "100%"
-    },
-    BG: {
-      // borderWidth: 1,
-      // backgroundColor: "#000000ff",
-      paddingTop: 20,
-      paddingLeft: 20,
-      paddingRight: 20,
-      paddingBottom: 20,
-    }, 
-    sensorIndecator: {
-      borderRadius: 12,
-      // backgroundColor:  "#bb56568a",
-      justifyContent: "center",
-      flex: 1,
-      maxHeight: 200,
-      minHeight: 140,
-      borderWidth: 1,
-    },
-    sensorIndicatorBAr: {
-      flex: 1,
-      gap: 4,
-      // alignItems: "center",
-    },
-    sensorName: {
-      textAlign: "center",
-      fontFamily: "lufga",
-      fontSize: 16,
-      fontWeight: "bold",
-      width: "100%",
-      borderWidth: 0,
-    },
-    textIndiactor: {
-      fontSize: 16,
-      fontWeight: "bold",
-      color: "#000000ff",
-      textAlign: "center",
-      borderWidth: 0,
-    },
-    Status: {
-      borderWidth: 1,
-      borderColor: "#000",
-      // justifyContent: "center",
-      alignItems: "center",
-      flex: 2,
-      borderRadius: 12,
-      gap: 12,
-      padding: 12,
-    },
-    controlSettings: {
-      borderColor: "#000",
-      borderWidth: 1,
-      height: 50,
-      width: 50,
-      borderRadius: 12,
-      justifyContent: "center",
-      alignItems: "center",
-    },
-    messageArea: {
-      width: "100%",
-      minHeight: 50,
-      maxHeight: 100,
-      alignItems: "center",
-      justifyContent: "center",
-      borderWidth: 0,
-      borderRadius: 12,
-      backgroundColor: "#AFDE4E",
-    },
-    controlArea: {
-        borderWidth: 1,
-        flex: 2,
-        // padding: 40,
-        // gap: 32,
-    },
-    dateSettingContainer: {
-      borderWidth: 0,
-      gap: 18,
-      marginBottom: 14,
-    },
-    body: {
-      borderWidth: 0,
-      gap: 32,
+  const isMobile = dimensions.width <= 1000
+  const isDesktop = dimensions.width >= 1280
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const toastError = useToast()
+  const toastMissingField = useToast()
+  const [toastId, setToastId] = useState(0)
+  const handleToastError = (error: string) => {
+    if (!toastError.isActive(String(toastId))) {
+      showNewToastError(error)
     }
-  })
- 
-return (
-  <ScrollView style={{...styles.BG}}>
+  }
+  const handleToastMissingField = () => {
+    if (!toastMissingField.isActive(String(toastId))) {
+      showNewToastMissingField()
+    }
+  }
 
-      {/* --------------------------------date and settings----------------- */}
-      <HStack style={{...styles.dateSettingContainer}}>
-        <HStack style={{...styles.Status}}>
-          <Text>Status:</Text>
-          <Text>Connected</Text>
-        </HStack>
-        <Box style={{...styles.controlSettings}}>
-          <Settings size={30} color={"#000"}/>
+  const showNewToastError = (error: string) => {
+    const newId = Math.random()
+    setToastId(newId)
+    toastError.show({
+      id: String(newId),
+      placement: 'top',
+      duration: 3000,
+      render: ({ id }) => {
+        const uniqueToastId = 'toast-' + id
+        return (
+          <Toast
+            action="error"
+            variant="outline"
+            nativeID={uniqueToastId}
+            className="p-4 gap-6 border-error-500 w-full shadow-hard-5 max-w-[443px] flex-row justify-between"
+          >
+            <HStack space="md">
+              <Icon as={HelpCircleIcon} className="stroke-error-500 mt-0.5" />
+              <VStack space="xs">
+                <ToastTitle className="font-semibold text-error-500">
+                  Error!
+                </ToastTitle>
+                <ToastDescription size="sm">{error}</ToastDescription>
+              </VStack>
+            </HStack>
+          </Toast>
+        )
+      },
+    })
+  }
+
+  const showNewToastMissingField = () => {
+    const newId = Math.random()
+    setToastId(newId)
+    toastMissingField.show({
+      id: String(newId),
+      placement: 'top',
+      duration: 3000,
+      render: ({ id }) => {
+        const uniqueToastId = 'toast-' + id
+        return (
+          <Toast
+            action="error"
+            variant="outline"
+            nativeID={uniqueToastId}
+            className="p-4 gap-6 border-error-500 w-full shadow-hard-5 max-w-[443px] flex-row justify-between"
+          >
+            <HStack space="md">
+              <Icon as={HelpCircleIcon} className="stroke-error-500 mt-0.5" />
+              <VStack space="xs">
+                <ToastTitle className="font-semibold text-error-500">
+                  Missing fields!
+                </ToastTitle>
+                <ToastDescription size="sm">
+                  Please enter both email and password.
+                </ToastDescription>
+              </VStack>
+            </HStack>
+          </Toast>
+        )
+      },
+    })
+  }
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      handleToastMissingField()
+      return
+    }
+
+    try {
+      setLoading(true)
+      const response = await signInWithEmailAndPassword(auth, email, password)
+      const isValid = await handleUserValidation(response.user.uid)
+
+      if (isValid === 'Valid') {
+        router.replace('/(screens)')
+      } else {
+        // Sign out the user since their account is disabled
+        await auth.signOut()
+        handleToastError('This account is currently disabled.')
+      }
+    } catch (error: any) {
+      // Handle specific Firebase auth errors
+      if (
+        error.code === 'auth/invalid-credential' ||
+        error.code === 'auth/wrong-password'
+      ) {
+        handleToastError('Invalid email or password.')
+      } else if (error.code === 'auth/user-not-found') {
+        handleToastError('No account found with this email.')
+      } else if (error.code === 'auth/too-many-requests') {
+        handleToastError('Too many failed attempts. Please try again later.')
+      } else {
+        handleToastError(error.message)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+
+  const handleUserValidation = async (uid: string) => {
+    try {
+      // ✅ Use direct document access instead of query
+      const profileRef = doc(db, 'profile', uid);
+      const profileSnap = await getDoc(profileRef);
+
+      if (!profileSnap.exists()) {
+        return 'Invalid'; // User not found in database
+      }
+
+      const userData = profileSnap.data();
+      if (userData?.status === 'Archived') {
+        return 'Invalid';
+      }
+
+      return 'Valid';
+    } catch (error) {
+      console.error('Error validating user:', error);
+      return 'Invalid'; // Default to invalid on error
+    }
+  };
+
+
+
+  const [showModal, setShowModal] = React.useState(false)
+
+  
+    return (
+      <Box
+        style={{
+          flex: 1,
+          backgroundColor: '#fcfcfcff',
+          borderWidth: 0,
+          alignItems: 'center',
+          paddingHorizontal: 50,
+        }}
+      >
+        {/* Header */}
+        <Box
+          style={{
+            marginBottom: 30,
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: 'black', fontSize: 24 }}>Welcome back!</Text>
+          <Text style={{ color: 'black', fontSize: 14 }}>
+            Please enter your details to log into the system.
+          </Text>
         </Box>
-      </HStack>
 
-    <VStack style={{...styles.body}}>
-        {/* --------------------------sensors---------------------------------- */}
-        <HStack style={{gap: 4, borderWidth: 0, borderColor: "#000000ff", flex: 1}}>
-        <VStack style={{...styles.sensorIndicatorBAr}}>
-           <View style={{...styles.sensorIndecator}}>
-            <Text style={{...styles.textIndiactor}}>100</Text>
-          </View>
-          <Text style={{...styles.sensorName}}>Humidity</Text>
-        </VStack>
-        <VStack style={{...styles.sensorIndicatorBAr}}>
-          <View style={{...styles.sensorIndecator}}>
-            <Text style={{...styles.textIndiactor}}>100</Text>
-        </View>
-         <Text style={{...styles.sensorName}}>Temp.</Text>
-        </VStack>
-        <VStack style={{...styles.sensorIndicatorBAr}}>
-          <View style={{...styles.sensorIndecator}}>
-            <Text style={{...styles.textIndiactor}}>100</Text>
-        </View>
-        <Text style={{...styles.sensorName}}>Moisture</Text>
-        </VStack>
-       <VStack style={{...styles.sensorIndicatorBAr}}>
-         <View style={{...styles.sensorIndecator}}>
-            <Text style={{...styles.textIndiactor}}>100</Text>
-        </View>
-        <Text style={{...styles.sensorName}}>Light</Text>
-       </VStack>
-      </HStack>
+        {/* Inputs */}
+        <Box style={{ borderWidth: 0, width: 320 }}>
+          <Text style={styles.label}>Email</Text>
+          <TextInput
+            placeholder="Enter Your Email"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            style={styles.inputs}
+          />
 
-      {/* ------------------------------message area----------------------------------- */}
-      <View style={{...styles.messageArea}}>
-        <Text style={{
-          fontSize: 12,
-          fontWeight: "semibold",
-        }}>Message Area</Text>
-      </View>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            placeholder="Enter Your Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            onSubmitEditing={handleLogin}
+            autoCapitalize="none"
+            style={styles.inputs}
+          />
+        </Box>
 
-    {/* ------------------------------control panel------------------------- */}
-    <View style={{...styles.ControlContainer}}>
-      <Box style={{borderWidth: 1, flex: 1, justifyContent: "center", alignItems: "center"}}>
-          <Text style={{
-            fontSize: 16,
-            fontWeight: "bold",
-            borderWidth: 1,
-            borderColor: "#000"
-          }}>Controls</Text>
+        {/* Forgot Password Button */}
+        <Box
+          style={{
+            width: 320,
+            alignItems: 'flex-end',
+            borderWidth: 0,
+            marginTop: 10,
+          }}
+        >
+          <Button variant="link" onPress={() => setShowModal(true)}>
+            <ButtonText style={{ color: 'black', fontSize: 14 }}>
+              Forgot Password?
+            </ButtonText>
+          </Button>
+        </Box>
+
+        {/* Login Button */}
+        <Box
+          style={{
+            width: 320,
+            borderWidth: 0,
+            marginTop: 30,
+            marginBottom: 30,
+          }}
+        >
+          <Button
+            style={{ backgroundColor: '#CDCCCC', borderRadius: 8, height: 36 }}
+            onPress={handleLogin}
+          >
+            <ButtonText style={{ color: 'black', fontSize: 14 }}>
+              {loading ? (
+                <Spinner size="small" color="black" style={{ marginTop: 7 }} />
+              ) : (
+                'Log in'
+              )}
+            </ButtonText>
+          </Button>
+
+          <Button
+            style={{ backgroundColor: '#CDCCCC', borderRadius: 8, height: 36, marginTop: 8 }}
+            onPress={() => router.push('/register')}
+          >
+            <ButtonText style={{ color: 'black', fontSize: 14 }}>
+              Register
+            </ButtonText>
+          </Button>
+        </Box>
+
+        <ForgotPasswordModal
+          visible={showModal}
+          onClose={() => setShowModal(false)}
+        />
       </Box>
-      <View style={{...styles.controlArea}}>
-          <VStack style={{
-            justifyContent: "center", 
-            alignItems:"center", 
-            borderWidth: 1,
-            flex: 1,
-            // padding: 12,
-            }}>
-            
-            <Switch
-            size="md"
-            isDisabled={false}
-            trackColor={{ false: '#9c9c9cff', true: '#383838ff' }}
-            thumbColor="#ffffffff"
-             />
-             <Text>Mist Huidifier</Text>
-          </VStack>
+    )
+  
 
-          <VStack style={{
-            justifyContent: "center", 
-            alignItems:"center", 
-            borderWidth: 1, 
-            gap: 12,
-            // padding: 12,
-            flex: 1
-            }}>
-            
-             <Slider
-                defaultValue={30}
-                size="md"
-                orientation="horizontal"
-                isDisabled={false}
-                isReversed={false}
-              >
-                <SliderTrack>
-                  <SliderFilledTrack />
-                </SliderTrack>
-                <SliderThumb />
-              </Slider>
-              <Text>Light Brightness</Text>
-          </VStack>
-        </View>
-    </View>
-    
-    </VStack>
+  // return (
+  //   <HStack style={{ flex: 1 }}>
+  //     {/* Login Section */}
+  //     <Box
+  //       style={{
+  //         flex: 1,
+  //         backgroundColor: '#171717',
+  //         borderWidth: 0,
+  //         alignItems: 'center',
+  //         justifyContent: 'center',
+  //         paddingHorizontal: 50,
+  //       }}
+  //     >
+  //       {/* Header */}
+  //       <Box
+  //         style={{
+  //           marginBottom: 30,
+  //           justifyContent: 'center',
+  //           alignItems: 'center',
+  //         }}
+  //       >
+  //         <Text style={{ color: 'black', fontSize: 24 }}>Welcome back!</Text>
+  //         <Text style={{ color: 'black', fontSize: 14 }}>
+  //           Please enter your details to log into the system.
+  //         </Text>
+  //       </Box>
 
-  </ScrollView>
-  )
+  //       {/* Inputs */}
+  //       <Box style={{ borderWidth: 0, width: 320 }}>
+  //         <Text style={styles.label}>Email</Text>
+  //         <TextInput
+  //           placeholder="Enter Your Email"
+  //           value={email}
+  //           onChangeText={setEmail}
+  //           autoCapitalize="none"
+  //           keyboardType="email-address"
+  //           style={styles.inputs}
+  //         />
+
+  //         <Text style={styles.label}>Password</Text>
+  //         <TextInput
+  //           placeholder="Enter Your Password"
+  //           value={password}
+  //           onChangeText={setPassword}
+  //           secureTextEntry
+  //           onSubmitEditing={handleLogin}
+  //           autoCapitalize="none"
+  //           style={styles.inputs}
+  //         />
+  //       </Box>
+
+  //       {/* Forgot Password Button */}
+  //       <Box
+  //         style={{
+  //           width: 320,
+  //           alignItems: 'flex-end',
+  //           borderWidth: 0,
+  //           marginTop: 10,
+  //         }}
+  //       >
+  //         <Button variant="link" onPress={() => setShowModal(true)}>
+  //           <ButtonText style={{ color: 'black', fontSize: 14 }}>
+  //             Forgot Password?
+  //           </ButtonText>
+  //         </Button>
+  //       </Box>
+
+  //       {/* Login Button */}
+  //       <Box
+  //         style={{
+  //           width: 320,
+  //           borderWidth: 0,
+  //           marginTop: 30,
+  //           marginBottom: 30,
+  //         }}
+  //       >
+  //         <Button
+  //           style={{ backgroundColor: '#CDCCCC', borderRadius: 8, height: 36 }}
+  //           onPress={handleLogin}
+  //         >
+  //           <ButtonText style={{ color: 'black', fontSize: 14 }}>
+  //             {loading ? (
+  //               <Spinner size="small" color="black" style={{ marginTop: 7 }} />
+  //             ) : (
+  //               'Log in'
+  //             )}
+  //           </ButtonText>
+  //         </Button>
+  //       </Box>
+  //     </Box>
+
+  //     {/* Company Logo Section */}
+  //     {/* <Box
+  //       style={{
+  //         flex: 2,
+  //         backgroundColor: '#000000',
+  //       }}
+  //     >
+  //       <Box
+  //         style={{
+  //           borderWidth: 0,
+  //           height: '100%',
+  //           width: '100%',
+  //           alignItems: 'center',
+  //           justifyContent: 'center',
+  //         }}
+  //       >
+  //         <Image
+  //           source={require('@/assets/images/final dark logo.png')}
+  //           alt="image"
+  //           style={{
+  //             width: '50%',
+  //             height: '50%',
+  //             resizeMode: 'contain',
+  //           }}
+  //         />
+  //       </Box>
+  //     </Box> */}
+
+  //   <ForgotPasswordModal
+  //     visible={showModal}
+  //     onClose={() => setShowModal(false)}
+  //   />
+  // </HStack>
+  // )
 }
+
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+  },
+  content: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 20,
+    borderRadius: 10,
+  },
+  text: {
+    color: '#000000ff',
+    fontSize: 24,
+  },
+  blurContainer: {
+    width: 320,
+    height: 340,
+    borderRadius: 50,
+    overflow: 'hidden',
+  },
+  buttonFeedback: {
+    backgroundColor: 'gray',
+  },
+  inputs: {
+    borderWidth: 1,
+    borderColor: 'black',
+    borderRadius: 8,
+    padding: 8,
+    color: '#000000ff',
+  },
+  label: {
+    fontSize: 14,
+    marginVertical: 10,
+    color: 'black',
+  },
+})

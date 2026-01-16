@@ -7,6 +7,7 @@ import { getStorage } from "firebase/storage";
 const firebaseConfig = {
   apiKey: "AIzaSyD-SZD13ODaIw8qXmptKy1eMC-wZ8VlupA",
   authDomain: "tearrarium-iot-monitoring.firebaseapp.com",
+  databaseURL: "https://tearrarium-iot-monitoring-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "tearrarium-iot-monitoring",
   storageBucket: "tearrarium-iot-monitoring.firebasestorage.app",
   messagingSenderId: "630085845562",
@@ -20,3 +21,6 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+export default app;
+
