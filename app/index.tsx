@@ -173,7 +173,7 @@ export default function LoginScreen() {
       }
 
       const userData = profileSnap.data();
-      if (userData?.status === 'Archived') {
+      if (userData?.status === 'Disabled') {
         return 'Invalid';
       }
 
