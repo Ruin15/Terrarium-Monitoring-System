@@ -1,0 +1,334 @@
+// Firebase Cloud Functions
+// File: functions/index.js
+
+const { onValueUpdated } = require("firebase-functions/v2/database");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const admin = require("firebase-admin");
+
+// Initialize Firebase Admin
+admin.initializeApp();
+
+const db = admin.firestore();
+
+/**
+ * Cloud Function: Store sensor data to Firestore
+ * Triggers whenever sensorData is updated in Realtime Database
+ * Creates historical records in Firestore for analytics
+ */
+exports.storeSensorDataToFirestore = onValueUpdated(
+    {
+      ref: "/sensorData",
+      region: "asia-southeast1",
+      instance: "tearrarium-iot-monitoring-default-rtdb",
+    },
+    async (event) => {
+      const change = event.data;
+      try {
+        const newData = change.after.val();
+        const oldData = change.before.val();
+
+        // Only store if data has actually changed
+        if (JSON.stringify(newData) === JSON.stringify(oldData)) {
+          console.log("No change in data, skipping...");
+          return null;
+        }
+
+        const timestamp = admin.firestore.FieldValue.serverTimestamp();
+        const timestampMillis = Date.now();
+
+        // Prepare document data
+        const documentData = {
+          temperature: newData.temperature || 0,
+          humidity: newData.humidity || 0,
+          moisture: newData.moisture || 0,
+          lux: newData.lux || 0,
+          timestamp: timestamp,
+          timestampMillis: timestampMillis,
+          date: new Date(timestampMillis).toISOString().split("T")[0],
+          hour: new Date(timestampMillis).getHours(),
+          controls: {
+            humidifierState: (newData.controls &&
+                newData.controls.humidifierState) || false,
+            lightBrightness: (newData.controls &&
+                newData.controls.lightBrightness) || 0,
+          },
+        };
+
+        // 1. Store raw sensor reading
+        await db.collection("sensorReadings").add(documentData);
+        console.log("✓ Stored raw sensor reading");
+
+        // 2. Update hourly aggregates
+        const hourlyDocId = `${documentData.date}_${documentData.hour}`;
+        const hourlyRef = db.collection("hourlyAggregates").doc(hourlyDocId);
+
+        await db.runTransaction(async (transaction) => {
+          const hourlyDoc = await transaction.get(hourlyRef);
+
+          if (!hourlyDoc.exists) {
+            transaction.set(hourlyRef, {
+              date: documentData.date,
+              hour: documentData.hour,
+              count: 1,
+              temperature: {
+                sum: newData.temperature,
+                min: newData.temperature,
+                max: newData.temperature,
+                avg: newData.temperature,
+              },
+              humidity: {
+                sum: newData.humidity,
+                min: newData.humidity,
+                max: newData.humidity,
+                avg: newData.humidity,
+              },
+              moisture: {
+                sum: newData.moisture,
+                min: newData.moisture,
+                max: newData.moisture,
+                avg: newData.moisture,
+              },
+              lux: {
+                sum: newData.lux,
+                min: newData.lux,
+                max: newData.lux,
+                avg: newData.lux,
+              },
+              lastUpdated: timestamp,
+            });
+          } else {
+            const data = hourlyDoc.data();
+            const newCount = data.count + 1;
+
+            transaction.update(hourlyRef, {
+              count: newCount,
+              temperature: {
+                sum: data.temperature.sum + newData.temperature,
+                min: Math.min(data.temperature.min, newData.temperature),
+                max: Math.max(data.temperature.max, newData.temperature),
+                avg: (data.temperature.sum + newData.temperature) / newCount,
+              },
+              humidity: {
+                sum: data.humidity.sum + newData.humidity,
+                min: Math.min(data.humidity.min, newData.humidity),
+                max: Math.max(data.humidity.max, newData.humidity),
+                avg: (data.humidity.sum + newData.humidity) / newCount,
+              },
+              moisture: {
+                sum: data.moisture.sum + newData.moisture,
+                min: Math.min(data.moisture.min, newData.moisture),
+                max: Math.max(data.moisture.max, newData.moisture),
+                avg: (data.moisture.sum + newData.moisture) / newCount,
+              },
+              lux: {
+                sum: data.lux.sum + newData.lux,
+                min: Math.min(data.lux.min, newData.lux),
+                max: Math.max(data.lux.max, newData.lux),
+                avg: (data.lux.sum + newData.lux) / newCount,
+              },
+              lastUpdated: timestamp,
+            });
+          }
+        });
+        console.log("✓ Updated hourly aggregate");
+
+        // 3. Update latest reading
+        await db.collection("latestReadings").doc("current").set(documentData);
+        console.log("✓ Updated latest reading");
+
+        // 4. Update daily summary
+        const dailyDocId = documentData.date;
+        const dailyRef = db.collection("dailySummaries").doc(dailyDocId);
+
+        await db.runTransaction(async (transaction) => {
+          const dailyDoc = await transaction.get(dailyRef);
+
+          if (!dailyDoc.exists) {
+            transaction.set(dailyRef, {
+              date: documentData.date,
+              readingCount: 1,
+              temperature: {
+                min: newData.temperature,
+                max: newData.temperature,
+                avg: newData.temperature,
+              },
+              humidity: {
+                min: newData.humidity,
+                max: newData.humidity,
+                avg: newData.humidity,
+              },
+              moisture: {
+                min: newData.moisture,
+                max: newData.moisture,
+                avg: newData.moisture,
+              },
+              lux: {
+                min: newData.lux,
+                max: newData.lux,
+                avg: newData.lux,
+              },
+              lastUpdated: timestamp,
+            });
+          } else {
+            const data = dailyDoc.data();
+            const newCount = data.readingCount + 1;
+
+            transaction.update(dailyRef, {
+              readingCount: newCount,
+              temperature: {
+                min: Math.min(data.temperature.min, newData.temperature),
+                max: Math.max(data.temperature.max, newData.temperature),
+                avg: ((data.temperature.avg * data.readingCount) +
+                    newData.temperature) / newCount,
+              },
+              humidity: {
+                min: Math.min(data.humidity.min, newData.humidity),
+                max: Math.max(data.humidity.max, newData.humidity),
+                avg: ((data.humidity.avg * data.readingCount) +
+                    newData.humidity) / newCount,
+              },
+              moisture: {
+                min: Math.min(data.moisture.min, newData.moisture),
+                max: Math.max(data.moisture.max, newData.moisture),
+                avg: ((data.moisture.avg * data.readingCount) +
+                    newData.moisture) / newCount,
+              },
+              lux: {
+                min: Math.min(data.lux.min, newData.lux),
+                max: Math.max(data.lux.max, newData.lux),
+                avg: ((data.lux.avg * data.readingCount) +
+                    newData.lux) / newCount,
+              },
+              lastUpdated: timestamp,
+            });
+          }
+        });
+        console.log("✓ Updated daily summary");
+
+        return null;
+      } catch (error) {
+        console.error("Error storing sensor data:", error);
+        return null;
+      }
+    });
+
+/**
+ * Cloud Function: Cleanup old sensor readings
+ * Runs daily to delete readings older than 30 days
+ */
+exports.cleanupOldSensorReadings = onSchedule(
+    {
+      schedule: "every 24 hours",
+      region: "asia-southeast1",
+    },
+    async (event) => {
+      try {
+        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+
+        const oldReadingsQuery = db.collection("sensorReadings")
+            .where("timestampMillis", "<", thirtyDaysAgo)
+            .limit(500);
+
+        const snapshot = await oldReadingsQuery.get();
+
+        if (snapshot.empty) {
+          console.log("No old readings to delete");
+          return null;
+        }
+
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        console.log(`✓ Deleted ${snapshot.size} old sensor readings`);
+
+        return null;
+      } catch (error) {
+        console.error("Error cleaning up old readings:", error);
+        return null;
+      }
+    });
+
+/**
+ * Cloud Function: Generate alerts
+ * Monitors sensor data and creates alerts for critical conditions
+ */
+exports.generateSensorAlerts = onValueUpdated(
+    {
+      ref: "/sensorData",
+      region: "asia-southeast1",
+      instance: "tearrarium-iot-monitoring-default-rtdb",
+    },
+    async (event) => {
+      const change = event.data;
+      try {
+        const newData = change.after.val();
+        const alerts = [];
+
+        const thresholds = {
+          temperature: { min: 25, max: 30, critical_low: 15, critical_high: 38 },
+          humidity: { min: 70, max: 90, critical_low: 50, critical_high: 95 },
+          moisture: { min: 40, max: 60, critical_low: 20, critical_high: 80 },
+          lux: { min: 1000, max: 10000, critical_low: 100, critical_high: 50000 },
+        };
+
+        // Check temperature
+        if (newData.temperature < thresholds.temperature.critical_low) {
+          alerts.push({
+            type: "temperature",
+            severity: "critical",
+            message: `CRITICAL: Temperature too low (${newData.temperature}°C)`,
+            value: newData.temperature,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        } else if (newData.temperature > thresholds.temperature.critical_high) {
+          alerts.push({
+            type: "temperature",
+            severity: "critical",
+            message: `CRITICAL: Temperature too high (${newData.temperature}°C)`,
+            value: newData.temperature,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // Check humidity
+        if (newData.humidity < thresholds.humidity.critical_low) {
+          alerts.push({
+            type: "humidity",
+            severity: "critical",
+            message: `CRITICAL: Humidity too low (${newData.humidity}%)`,
+            value: newData.humidity,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // Check moisture
+        if (newData.moisture < thresholds.moisture.critical_low) {
+          alerts.push({
+            type: "moisture",
+            severity: "critical",
+            message: `CRITICAL: Soil too dry (${newData.moisture}%)`,
+            value: newData.moisture,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          });
+        }
+
+        // Store alerts if any
+        if (alerts.length > 0) {
+          const batch = db.batch();
+          alerts.forEach((alert) => {
+            const alertRef = db.collection("alerts").doc();
+            batch.set(alertRef, alert);
+          });
+          await batch.commit();
+          console.log(`✓ Created ${alerts.length} alert(s)`);
+        }
+
+        return null;
+      } catch (error) {
+        console.error("Error generating alerts:", error);
+        return null;
+      }
+    });
