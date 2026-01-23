@@ -11,16 +11,18 @@ import {
   SliderThumb,
 } from '@/components/ui/slider';
 import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Droplets, Thermometer, Sun, Sprout, RefreshCcw } from 'lucide-react-native';
-import { useUser } from "@/context/profileContext";
+import { useUser } from "@/context/UserContext";
 import { generateRecommendations } from '@/components/uiRecommendation/generateRecommendations';
 import { useSensorData } from '@/context/sensorContext';
+import { useControl } from "@/context/controlContext";
 
 export default function Homepage() {
   const { profile } = useUser();
-  
+
+
   // Use the shared sensor context
   const { currentData, historicalData, isLoading, error, getSensorData } = useSensorData();
-  
+
   const [analytics, setAnalytics] = useState<{
     trends: Record<string, any>;
     recommendations: Array<{ icon: string; severity: 'danger' | 'warning' | 'success' | 'info'; title: string; message: string; action: string }>;
@@ -32,8 +34,8 @@ export default function Homepage() {
   });
   const [message, setMessage] = useState("Connecting...");
   const [showAnalytics, setShowAnalytics] = useState(false);
-  const [lightBrightness, setLightBrightness] = useState<number>(30);
   const [isConnected, setIsConnected] = useState(false);
+  const { humidifierState, lightBrightness, setHumidifierState, setLightBrightness } = useControl();
 
   const dimensions = useWindowDimensions();
 
@@ -86,21 +88,21 @@ export default function Homepage() {
 
   // Update analytics when sensor data changes
   useEffect(() => {
-    if (currentData && historicalData.length > 0) {
+    if (currentData && currentData.temperature > 0) {
       setIsConnected(true);
-      
+
       // Analyze trends
       const trends = analyzeTrends(historicalData);
-      
+
       // Generate recommendations and health score
       const { recommendations, healthScore } = generateRecommendations(sensorData);
-      
+
       setAnalytics({
         trends,
         recommendations,
         healthScore
       });
-      
+
       // Update message
       updateMessage(sensorData, recommendations);
     } else if (error) {
@@ -162,7 +164,7 @@ export default function Homepage() {
       flexDirection: "row",
       gap: 4,
       borderBottomWidth: 4,
-      borderColor: "#858585",
+      borderColor: "#33b42f",
       borderTopLeftRadius: 0,
       borderTopRightRadius: 0,
       borderBottomLeftRadius: 12,
@@ -296,16 +298,20 @@ export default function Homepage() {
 
   return (
     <ScrollView style={{ ...styles.BG }}>
-      {/* Header */}
+      {/* display Connection Status */}
       <HStack style={{ ...styles.dateSettingContainer }}>
         <HStack style={{ ...styles.Status }}>
           <View style={{
             ...styles.statusDot,
-            backgroundColor: isConnected ? '#51cf66' : '#ff6b6b'
+            backgroundColor: error ? '#ff6b6b' : '#51cf66'
           }} />
-          <Text style={{ fontWeight: "bold" }}>
-            {isConnected ? "Connected" : "Disconnected"}
-          </Text>
+          {error ? (
+            <Text style={{ color: '#c33', fontSize: 13 }}>{error}</Text>
+          ) : (
+            <Text style={{ fontSize: 14, fontWeight: "600", color: "#333" }}>
+              Connected
+            </Text>
+          )}
         </HStack>
         <Pressable
           style={{ ...styles.Reload }}
@@ -314,18 +320,6 @@ export default function Homepage() {
           <RefreshCcw size={20} color={"#000"} />
         </Pressable>
       </HStack>
-
-      {/* Error Display */}
-      {error && (
-        <View style={{
-          backgroundColor: '#fee',
-          padding: 12,
-          borderRadius: 8,
-          marginBottom: 16,
-        }}>
-          <Text style={{ color: '#c33', fontSize: 13 }}>⚠️ {error}</Text>
-        </View>
-      )}
 
       <VStack style={{ ...styles.body }}>
         {/* Health Score */}
@@ -519,12 +513,6 @@ export default function Homepage() {
               borderColor: "#ddd",
               padding: 16,
             }}>
-              <Switch
-                size="md"
-                isDisabled={false}
-                trackColor={{ false: '#9c9c9cff', true: '#383838ff' }}
-                thumbColor="#ffffffff"
-              />
               <Text style={{ marginTop: 8 }}>Mist Humidifier</Text>
             </VStack>
 
@@ -544,6 +532,8 @@ export default function Homepage() {
                 orientation="horizontal"
                 isDisabled={false}
                 isReversed={false}
+                maxValue={255}
+                minValue={0}
               >
                 <SliderTrack>
                   <SliderFilledTrack />
@@ -551,11 +541,15 @@ export default function Homepage() {
                 <SliderThumb />
               </Slider>
               <Text style={{ fontSize: 14, fontWeight: "600" }}>
-                {lightBrightness}%
+                {Math.round((lightBrightness / 255) * 100)}%
               </Text>
             </VStack>
           </View>
         </View>
+
+
+
+
       </VStack>
     </ScrollView>
   );

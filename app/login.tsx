@@ -7,7 +7,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native'
-import { signInWithEmailAndPassword } from 'firebase/auth'
+// import { signInWithEmailAndPassword } from 'firebase/auth'
+import { signInWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth'
 import { auth, db } from '@/firebase/firebaseConfig'
 import { useRouter } from 'expo-router'
 import {
@@ -34,9 +35,9 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { Divider } from '@/components/ui/divider'
 import { Heading } from '@/components/ui/heading'
-// import { useUser } from '@/context/profileContext'
 import { collection, query, where, getDoc, doc } from 'firebase/firestore'
 import ForgotPasswordModal from '@/modals/forgotPasswordModal'
+import { Profile } from '@/_types'
 
 export default function LoginScreen() {
   const dimensions = useWindowDimensions()
@@ -124,42 +125,83 @@ export default function LoginScreen() {
     })
   }
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      handleToastMissingField()
-      return
-    }
 
-    try {
-      setLoading(true)
-      const response = await signInWithEmailAndPassword(auth, email, password)
-      const isValid = await handleUserValidation(response.user.uid)
+  // Add this helper function at the top of your login screen, outside the component
+const waitForAuthState = (maxWaitTime = 3000): Promise<User | null> => {
+  return new Promise((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, (Profile) => {
+      unsubscribe();
+      resolve(Profile);
+    });
+    
+    // Timeout fallback
+    setTimeout(() => {
+      unsubscribe();
+      resolve(auth.currentUser);
+    }, maxWaitTime);
+  });
+};
 
-      if (isValid === 'Valid') {
-        router.replace('/(screens)')
-      } else {
-        // Sign out the user since their account is disabled
-        await auth.signOut()
-        handleToastError('This account is currently disabled.')
-      }
-    } catch (error: any) {
-      // Handle specific Firebase auth errors
-      if (
-        error.code === 'auth/invalid-credential' ||
-        error.code === 'auth/wrong-password'
-      ) {
-        handleToastError('Invalid email or password.')
-      } else if (error.code === 'auth/user-not-found') {
-        handleToastError('No account found with this email.')
-      } else if (error.code === 'auth/too-many-requests') {
-        handleToastError('Too many failed attempts. Please try again later.')
-      } else {
-        handleToastError(error.message)
-      }
-    } finally {
-      setLoading(false)
-    }
+// Replace your handleLogin function with this updated version:
+const handleLogin = async () => {
+  if (!email || !password) {
+    handleToastMissingField();
+    return;
   }
+
+  try {
+    setLoading(true);
+    
+    console.log("🔐 Attempting login for:", email);
+    const response = await signInWithEmailAndPassword(auth, email, password);
+    
+    console.log("🔐 Login successful:", {
+      uid: response.user.uid,
+      email: response.user.email,
+      expectedDocPath: `profile/${response.user.uid}`
+    });
+    
+    // Validate user status
+    const isValid = await handleUserValidation(response.user.uid);
+
+    if (isValid !== 'Valid') {
+      console.log("❌ User validation failed - account disabled");
+      await auth.signOut();
+      handleToastError('This account is currently disabled.');
+      return;
+    }
+    
+    console.log("✅ User validated");
+    
+    // Wait for auth state to propagate before redirecting
+    console.log("⏳ Waiting for auth state to propagate...");
+    await waitForAuthState(2000);
+    
+    console.log("✅ Auth state confirmed, current user:", auth.currentUser?.uid);
+    console.log("🚀 Redirecting to /(screens)");
+    
+    router.replace('/(screens)');
+    
+  } catch (error: any) {
+    console.error("❌ Login error:", error);
+    
+    // Handle specific Firebase auth errors
+    if (
+      error.code === 'auth/invalid-credential' ||
+      error.code === 'auth/wrong-password'
+    ) {
+      handleToastError('Invalid email or password.');
+    } else if (error.code === 'auth/user-not-found') {
+      handleToastError('No account found with this email.');
+    } else if (error.code === 'auth/too-many-requests') {
+      handleToastError('Too many failed attempts. Please try again later.');
+    } else {
+      handleToastError(error.message);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   const handleUserValidation = async (uid: string) => {
@@ -168,6 +210,7 @@ export default function LoginScreen() {
       const profileRef = doc(db, 'profile', uid);
       const profileSnap = await getDoc(profileRef);
 
+      console.log("🔍 User validation - fetched profile document for UID:", uid);
       if (!profileSnap.exists()) {
         return 'Invalid'; // User not found in database
       }
@@ -202,6 +245,7 @@ export default function LoginScreen() {
         {/* Header */}
         <Box
           style={{
+            marginTop: 40,
             marginBottom: 30,
             justifyContent: 'center',
             alignItems: 'center',

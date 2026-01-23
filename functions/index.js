@@ -13,7 +13,7 @@ const db = admin.firestore();
 /**
  * Cloud Function: Store sensor data to Firestore
  * Triggers whenever sensorData is updated in Realtime Database
- * Creates historical records in Firestore for analytics
+ * Creates aggregated records in Firestore (NO raw sensor readings)
  */
 exports.storeSensorDataToFirestore = onValueUpdated(
     {
@@ -35,31 +35,35 @@ exports.storeSensorDataToFirestore = onValueUpdated(
 
         const timestamp = admin.firestore.FieldValue.serverTimestamp();
         const timestampMillis = Date.now();
+        const date = new Date(timestampMillis).toISOString().split("T")[0];
+        const hour = new Date(timestampMillis).getHours();
 
-        // Prepare document data
-        const documentData = {
+        // Prepare base data
+        const sensorData = {
           temperature: newData.temperature || 0,
           humidity: newData.humidity || 0,
           moisture: newData.moisture || 0,
           lux: newData.lux || 0,
+        };
+
+        // 1. Update latest reading ONLY
+        await db.collection("latestReadings").doc("current").set({
+          ...sensorData,
           timestamp: timestamp,
           timestampMillis: timestampMillis,
-          date: new Date(timestampMillis).toISOString().split("T")[0],
-          hour: new Date(timestampMillis).getHours(),
+          date: date,
+          hour: hour,
           controls: {
             humidifierState: (newData.controls &&
                 newData.controls.humidifierState) || false,
             lightBrightness: (newData.controls &&
                 newData.controls.lightBrightness) || 0,
           },
-        };
-
-        // 1. Store raw sensor reading
-        await db.collection("sensorReadings").add(documentData);
-        console.log("✓ Stored raw sensor reading");
+        });
+        console.log("✓ Updated latest reading");
 
         // 2. Update hourly aggregates
-        const hourlyDocId = `${documentData.date}_${documentData.hour}`;
+        const hourlyDocId = `${date}_${hour}`;
         const hourlyRef = db.collection("hourlyAggregates").doc(hourlyDocId);
 
         await db.runTransaction(async (transaction) => {
@@ -67,32 +71,32 @@ exports.storeSensorDataToFirestore = onValueUpdated(
 
           if (!hourlyDoc.exists) {
             transaction.set(hourlyRef, {
-              date: documentData.date,
-              hour: documentData.hour,
+              date: date,
+              hour: hour,
               count: 1,
               temperature: {
-                sum: newData.temperature,
-                min: newData.temperature,
-                max: newData.temperature,
-                avg: newData.temperature,
+                sum: sensorData.temperature,
+                min: sensorData.temperature,
+                max: sensorData.temperature,
+                avg: sensorData.temperature,
               },
               humidity: {
-                sum: newData.humidity,
-                min: newData.humidity,
-                max: newData.humidity,
-                avg: newData.humidity,
+                sum: sensorData.humidity,
+                min: sensorData.humidity,
+                max: sensorData.humidity,
+                avg: sensorData.humidity,
               },
               moisture: {
-                sum: newData.moisture,
-                min: newData.moisture,
-                max: newData.moisture,
-                avg: newData.moisture,
+                sum: sensorData.moisture,
+                min: sensorData.moisture,
+                max: sensorData.moisture,
+                avg: sensorData.moisture,
               },
               lux: {
-                sum: newData.lux,
-                min: newData.lux,
-                max: newData.lux,
-                avg: newData.lux,
+                sum: sensorData.lux,
+                min: sensorData.lux,
+                max: sensorData.lux,
+                avg: sensorData.lux,
               },
               lastUpdated: timestamp,
             });
@@ -103,28 +107,28 @@ exports.storeSensorDataToFirestore = onValueUpdated(
             transaction.update(hourlyRef, {
               count: newCount,
               temperature: {
-                sum: data.temperature.sum + newData.temperature,
-                min: Math.min(data.temperature.min, newData.temperature),
-                max: Math.max(data.temperature.max, newData.temperature),
-                avg: (data.temperature.sum + newData.temperature) / newCount,
+                sum: data.temperature.sum + sensorData.temperature,
+                min: Math.min(data.temperature.min, sensorData.temperature),
+                max: Math.max(data.temperature.max, sensorData.temperature),
+                avg: (data.temperature.sum + sensorData.temperature) / newCount,
               },
               humidity: {
-                sum: data.humidity.sum + newData.humidity,
-                min: Math.min(data.humidity.min, newData.humidity),
-                max: Math.max(data.humidity.max, newData.humidity),
-                avg: (data.humidity.sum + newData.humidity) / newCount,
+                sum: data.humidity.sum + sensorData.humidity,
+                min: Math.min(data.humidity.min, sensorData.humidity),
+                max: Math.max(data.humidity.max, sensorData.humidity),
+                avg: (data.humidity.sum + sensorData.humidity) / newCount,
               },
               moisture: {
-                sum: data.moisture.sum + newData.moisture,
-                min: Math.min(data.moisture.min, newData.moisture),
-                max: Math.max(data.moisture.max, newData.moisture),
-                avg: (data.moisture.sum + newData.moisture) / newCount,
+                sum: data.moisture.sum + sensorData.moisture,
+                min: Math.min(data.moisture.min, sensorData.moisture),
+                max: Math.max(data.moisture.max, sensorData.moisture),
+                avg: (data.moisture.sum + sensorData.moisture) / newCount,
               },
               lux: {
-                sum: data.lux.sum + newData.lux,
-                min: Math.min(data.lux.min, newData.lux),
-                max: Math.max(data.lux.max, newData.lux),
-                avg: (data.lux.sum + newData.lux) / newCount,
+                sum: data.lux.sum + sensorData.lux,
+                min: Math.min(data.lux.min, sensorData.lux),
+                max: Math.max(data.lux.max, sensorData.lux),
+                avg: (data.lux.sum + sensorData.lux) / newCount,
               },
               lastUpdated: timestamp,
             });
@@ -132,12 +136,8 @@ exports.storeSensorDataToFirestore = onValueUpdated(
         });
         console.log("✓ Updated hourly aggregate");
 
-        // 3. Update latest reading
-        await db.collection("latestReadings").doc("current").set(documentData);
-        console.log("✓ Updated latest reading");
-
-        // 4. Update daily summary
-        const dailyDocId = documentData.date;
+        // 3. Update daily summary
+        const dailyDocId = date;
         const dailyRef = db.collection("dailySummaries").doc(dailyDocId);
 
         await db.runTransaction(async (transaction) => {
@@ -145,27 +145,27 @@ exports.storeSensorDataToFirestore = onValueUpdated(
 
           if (!dailyDoc.exists) {
             transaction.set(dailyRef, {
-              date: documentData.date,
+              date: date,
               readingCount: 1,
               temperature: {
-                min: newData.temperature,
-                max: newData.temperature,
-                avg: newData.temperature,
+                min: sensorData.temperature,
+                max: sensorData.temperature,
+                avg: sensorData.temperature,
               },
               humidity: {
-                min: newData.humidity,
-                max: newData.humidity,
-                avg: newData.humidity,
+                min: sensorData.humidity,
+                max: sensorData.humidity,
+                avg: sensorData.humidity,
               },
               moisture: {
-                min: newData.moisture,
-                max: newData.moisture,
-                avg: newData.moisture,
+                min: sensorData.moisture,
+                max: sensorData.moisture,
+                avg: sensorData.moisture,
               },
               lux: {
-                min: newData.lux,
-                max: newData.lux,
-                avg: newData.lux,
+                min: sensorData.lux,
+                max: sensorData.lux,
+                avg: sensorData.lux,
               },
               lastUpdated: timestamp,
             });
@@ -176,28 +176,28 @@ exports.storeSensorDataToFirestore = onValueUpdated(
             transaction.update(dailyRef, {
               readingCount: newCount,
               temperature: {
-                min: Math.min(data.temperature.min, newData.temperature),
-                max: Math.max(data.temperature.max, newData.temperature),
+                min: Math.min(data.temperature.min, sensorData.temperature),
+                max: Math.max(data.temperature.max, sensorData.temperature),
                 avg: ((data.temperature.avg * data.readingCount) +
-                    newData.temperature) / newCount,
+                    sensorData.temperature) / newCount,
               },
               humidity: {
-                min: Math.min(data.humidity.min, newData.humidity),
-                max: Math.max(data.humidity.max, newData.humidity),
+                min: Math.min(data.humidity.min, sensorData.humidity),
+                max: Math.max(data.humidity.max, sensorData.humidity),
                 avg: ((data.humidity.avg * data.readingCount) +
-                    newData.humidity) / newCount,
+                    sensorData.humidity) / newCount,
               },
               moisture: {
-                min: Math.min(data.moisture.min, newData.moisture),
-                max: Math.max(data.moisture.max, newData.moisture),
+                min: Math.min(data.moisture.min, sensorData.moisture),
+                max: Math.max(data.moisture.max, sensorData.moisture),
                 avg: ((data.moisture.avg * data.readingCount) +
-                    newData.moisture) / newCount,
+                    sensorData.moisture) / newCount,
               },
               lux: {
-                min: Math.min(data.lux.min, newData.lux),
-                max: Math.max(data.lux.max, newData.lux),
+                min: Math.min(data.lux.min, sensorData.lux),
+                max: Math.max(data.lux.max, sensorData.lux),
                 avg: ((data.lux.avg * data.readingCount) +
-                    newData.lux) / newCount,
+                    sensorData.lux) / newCount,
               },
               lastUpdated: timestamp,
             });
@@ -213,26 +213,29 @@ exports.storeSensorDataToFirestore = onValueUpdated(
     });
 
 /**
- * Cloud Function: Cleanup old sensor readings
- * Runs daily to delete readings older than 30 days
+ * Cloud Function: Cleanup old hourly aggregates
+ * Runs daily to delete hourly data older than 7 days
+ * (Daily summaries are kept longer)
  */
-exports.cleanupOldSensorReadings = onSchedule(
+exports.cleanupOldHourlyAggregates = onSchedule(
     {
       schedule: "every 24 hours",
       region: "asia-southeast1",
     },
     async (event) => {
       try {
-        const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const cutoffDate = sevenDaysAgo.toISOString().split("T")[0];
 
-        const oldReadingsQuery = db.collection("sensorReadings")
-            .where("timestampMillis", "<", thirtyDaysAgo)
+        const oldAggregatesQuery = db.collection("hourlyAggregates")
+            .where("date", "<", cutoffDate)
             .limit(500);
 
-        const snapshot = await oldReadingsQuery.get();
+        const snapshot = await oldAggregatesQuery.get();
 
         if (snapshot.empty) {
-          console.log("No old readings to delete");
+          console.log("No old hourly aggregates to delete");
           return null;
         }
 
@@ -242,11 +245,52 @@ exports.cleanupOldSensorReadings = onSchedule(
         });
 
         await batch.commit();
-        console.log(`✓ Deleted ${snapshot.size} old sensor readings`);
+        console.log(`✓ Deleted ${snapshot.size} old hourly aggregates`);
 
         return null;
       } catch (error) {
-        console.error("Error cleaning up old readings:", error);
+        console.error("Error cleaning up old hourly aggregates:", error);
+        return null;
+      }
+    });
+
+/**
+ * Cloud Function: Cleanup old daily summaries
+ * Runs daily to delete daily summaries older than 90 days
+ */
+exports.cleanupOldDailySummaries = onSchedule(
+    {
+      schedule: "every 24 hours",
+      region: "asia-southeast1",
+    },
+    async (event) => {
+      try {
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        const cutoffDate = ninetyDaysAgo.toISOString().split("T")[0];
+
+        const oldSummariesQuery = db.collection("dailySummaries")
+            .where("date", "<", cutoffDate)
+            .limit(500);
+
+        const snapshot = await oldSummariesQuery.get();
+
+        if (snapshot.empty) {
+          console.log("No old daily summaries to delete");
+          return null;
+        }
+
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        console.log(`✓ Deleted ${snapshot.size} old daily summaries`);
+
+        return null;
+      } catch (error) {
+        console.error("Error cleaning up old daily summaries:", error);
         return null;
       }
     });

@@ -1,12 +1,5 @@
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import '@/global.css';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from '@react-navigation/native';
-import { useFonts } from 'expo-font';
 // import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
 import { router, Slot, usePathname } from 'expo-router';
@@ -19,15 +12,13 @@ import {
 } from '@/components/ui/avatar';
 import { useWindowDimensions, StyleSheet } from 'react-native'
 import { Drawer } from 'expo-router/drawer'
-import {
-  DrawerContentScrollView,
-  DrawerItemList,
-  DrawerToggleButton,
-} from '@react-navigation/drawer'
-import { Home, LayoutDashboard } from 'lucide-react-native';
+import { Home, LayoutDashboard, Settings } from 'lucide-react-native';
 import {UserProvider} from '@/context/UserContext';
-import HeaderLogout from '@/components/logoutButton/headerLogout';
+import LogoutModal from '@/components/logoutButton/headerLogout';
 import { SensorProvider } from '@/context/sensorContext';
+import { LogProvider } from '@/context/logContext';
+import { ControlProvider } from '@/context/controlContext';
+import { useProtectedRoute } from '@/_helpers/authGuard';
 
 
 
@@ -60,6 +51,7 @@ import { SensorProvider } from '@/context/sensorContext';
 // }
 
 export default function RootLayoutNav() {
+  useProtectedRoute();
   const pathname = usePathname();
 //   const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
   const [showDrawer, setShowDrawer] = useState(false);
@@ -70,6 +62,8 @@ export default function RootLayoutNav() {
   return (
     <UserProvider>
       <SensorProvider>
+        <LogProvider autoFetch={true} realtimeUpdates={true}>
+          <ControlProvider>
     <GluestackUIProvider mode={'light'}>
         <Drawer
               screenOptions={{
@@ -128,7 +122,7 @@ export default function RootLayoutNav() {
                     <Home color={color} size={25} className="mr-2" />
                   ),
                   headerTitle: () => null,
-                  headerRight: () => <HeaderLogout />,
+                  headerRight: () => <LogoutModal />,
                   // headerLeft: () => <HeaderButtons />,
                   headerTintColor: 'black',
                   headerStyle: {
@@ -145,7 +139,7 @@ export default function RootLayoutNav() {
                     <LayoutDashboard color={color} size={25} className="mr-2" />
                   ),
                   headerTitle: () => null,
-                  headerRight: () => <HeaderLogout />,
+                  headerRight: () => <LogoutModal />,
                   // headerLeft: isLargeScreen
                   //   ? () => <HeaderButtons screen="dashboard" />
                   //   : undefined,
@@ -156,56 +150,39 @@ export default function RootLayoutNav() {
                 }}
               />
 
-
-            {/* <DrawerHeader style={{ padding: 12,}}>
-              <VStack style={{ 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                width: '100%', 
-                gap: 12,
-                }}>
-                <Avatar size="2xl">
-                    <AvatarFallbackText>User</AvatarFallbackText>
-                </Avatar>
-                <Text style={{ textAlign: 'center', fontFamily: 'lufga',  }}>User Name</Text>
-              </VStack>
-            </DrawerHeader>
-            
-            <DrawerBody>
-              <VStack space="lg" className="mt-4 rounded-2xl">
-                <Button
-                  onPress={() => {
-                    // Navigate to home
-                    setShowDrawer(false);
-                    router.push(`/`);
+              <Drawer.Screen
+                name="settings"
+                options={{
+                  title: 'Settings',
+                  drawerIcon: ({ color }) => (
+                    <Settings color={color} size={25} className="mr-2" />
+                  ),
+                  headerTitle: () => null,
+                   headerRight: () => <LogoutModal />,
+                  headerTintColor: 'black',
+                  headerStyle: {
+                    ...styles.headerSpace,
+                  },
+                }}
+              />
+              <Drawer.Screen
+                  name="account"
+                  options={{
+                    drawerItemStyle: { display: 'none' },
+                    headerTitle: () => null,
+                    headerRight: () => <LogoutModal />,
+                    headerTintColor: 'black',
+                    headerStyle: {
+                      ...styles.headerSpace,
+                    },
                   }}
-                >
-                  <ButtonText>Home</ButtonText>
-                </Button>
-                
-                <Button
-                  onPress={() => {
-                    // Navigate to settings
-                    setShowDrawer(false);
-                    router.push(`/analytics`);
-                  }}
-                >
-                  <ButtonText>Analysis</ButtonText>
-                </Button>
-                
+                />
 
-              </VStack>
-            </DrawerBody> */}
-            
-            {/* <DrawerFooter>
-              <Text size="sm" className="text-center">
-                Version 1.0.0
-              </Text>
-            </DrawerFooter>
-          </DrawerContent> */}
         </Drawer>
     
     </GluestackUIProvider>
+            </ControlProvider>
+       </LogProvider>
       </SensorProvider>
     </UserProvider>
   );
@@ -224,3 +201,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
   },
 })
+
+
+
+
