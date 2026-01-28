@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, onSnapshot, getDoc } from "firebase/firestore";
@@ -51,7 +52,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         console.log("✅ Profile refreshed successfully:", {
           id: profileData.id,
           firstName: profileData.firstName,
-          lastName: profileData.lastName
+          lastName: profileData.lastName,
+          terrariumEco: profileData.terrariumEco
         });
         setProfile(profileData);
         setError(null);
@@ -134,6 +136,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
             firstName: profileData.firstName,
             lastName: profileData.lastName,
             email: profileData.email,
+            terrariumEco: profileData.terrariumEco,
             documentIdMatchesUid: profileData.id === profileData.uid
           });
 
@@ -153,7 +156,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
                 };
                 console.log("📥 Profile updated:", {
                   firstName: updatedProfile.firstName,
-                  lastName: updatedProfile.lastName
+                  lastName: updatedProfile.lastName,
+                  terrariumEco: updatedProfile.terrariumEco
                 });
                 setProfile(updatedProfile);
                 setError(null);
@@ -252,6 +256,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       profileId: profile?.id,
       profileUid: profile?.uid,
       profileEmail: profile?.email,
+      terrariumEco: profile?.terrariumEco,
       error,
     });
   }, [authInitialized, loading, profile, error]);

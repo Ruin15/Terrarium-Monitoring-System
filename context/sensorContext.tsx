@@ -4,6 +4,7 @@ import { getDatabase } from 'firebase/database';
 import app from '../firebase/firebaseConfig';
 
 const ARDUINO_IP = "88.8.88.112";
+// const ARDUINO_IP = "172.23.243.14";
 
 // Initialize Firebase Realtime Database
 const database = getDatabase(app);
@@ -99,7 +100,7 @@ export const SensorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const unsubscribe = onValue(sensorDataRef, (snapshot) => {
       if (snapshot.exists()) {
         const firebaseData = snapshot.val();
-        console.log('Firebase data received:', firebaseData);
+        // console.log('Firebase data received:', firebaseData);
         
         // Map Firebase data to our SensorData format
         const now = new Date();

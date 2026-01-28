@@ -296,9 +296,152 @@ exports.cleanupOldDailySummaries = onSchedule(
     });
 
 /**
- * Cloud Function: Generate alerts
- * Monitors sensor data and creates alerts for critical conditions
+ * Cloud Function: Store sensor alerts for email reports
+ * Monitors sensor data and stores alerts based on threshold violations
+ * Thresholds are dynamically synced from the user's selected ecosystem
+ * Data is stored in Firestore for email report generation
  */
+
+// Ecosystem-specific thresholds (matching ecosystemLimiter.tsx)
+const ECOSYSTEM_THRESHOLDS = {
+  tropical: {
+    temperature: { 
+      min: 25, 
+      max: 30, 
+      critical_low: 20, 
+      critical_high: 35,
+      warning_low: 22,
+      warning_high: 33
+    },
+    humidity: { 
+      min: 70, 
+      max: 90, 
+      critical_low: 50, 
+      critical_high: 95,
+      warning_low: 60,
+      warning_high: 92
+    },
+    moisture: { 
+      min: 40, 
+      max: 60, 
+      critical_low: 25, 
+      critical_high: 70,
+      warning_low: 30,
+      warning_high: 65
+    },
+    lux: { 
+      min: 1000, 
+      max: 10000, 
+      critical_low: 500, 
+      critical_high: 60000,
+      warning_low: 800,
+      warning_high: 40000
+    },
+  },
+  woodland: {
+    temperature: { 
+      min: 16, 
+      max: 24, 
+      critical_low: 10, 
+      critical_high: 28,
+      warning_low: 12,
+      warning_high: 26
+    },
+    humidity: { 
+      min: 60, 
+      max: 85, 
+      critical_low: 45, 
+      critical_high: 90,
+      warning_low: 50,
+      warning_high: 88
+    },
+    moisture: { 
+      min: 35, 
+      max: 60, 
+      critical_low: 20, 
+      critical_high: 70,
+      warning_low: 25,
+      warning_high: 65
+    },
+    lux: { 
+      min: 1000, 
+      max: 5000, 
+      critical_low: 500, 
+      critical_high: 8000,
+      warning_low: 700,
+      warning_high: 7000
+    },
+  },
+  bog: {
+    temperature: { 
+      min: 18, 
+      max: 30, 
+      critical_low: 12, 
+      critical_high: 35,
+      warning_low: 15,
+      warning_high: 32
+    },
+    humidity: { 
+      min: 70, 
+      max: 95, 
+      critical_low: 60, 
+      critical_high: 98,
+      warning_low: 65,
+      warning_high: 96
+    },
+    moisture: { 
+      min: 70, 
+      max: 100, 
+      critical_low: 60, 
+      critical_high: 100,
+      warning_low: 65,
+      warning_high: 98
+    },
+    lux: { 
+      min: 5000, 
+      max: 15000, 
+      critical_low: 3000, 
+      critical_high: 20000,
+      warning_low: 4000,
+      warning_high: 18000
+    },
+  },
+  paludarium: {
+    temperature: { 
+      min: 22, 
+      max: 28, 
+      critical_low: 18, 
+      critical_high: 32,
+      warning_low: 20,
+      warning_high: 30
+    },
+    humidity: { 
+      min: 70, 
+      max: 95, 
+      critical_low: 60, 
+      critical_high: 98,
+      warning_low: 65,
+      warning_high: 96
+    },
+    moisture: { 
+      min: 50, 
+      max: 80, 
+      critical_low: 35, 
+      critical_high: 90,
+      warning_low: 40,
+      warning_high: 85
+    },
+    lux: { 
+      min: 2000, 
+      max: 10000, 
+      critical_low: 1000, 
+      critical_high: 15000,
+      warning_low: 1500,
+      warning_high: 12000
+    },
+  }
+};
+
 exports.generateSensorAlerts = onValueUpdated(
     {
       ref: "/sensorData",
@@ -309,14 +452,40 @@ exports.generateSensorAlerts = onValueUpdated(
       const change = event.data;
       try {
         const newData = change.after.val();
-        const alerts = [];
+        const timestamp = admin.firestore.FieldValue.serverTimestamp();
+        const timestampMillis = Date.now();
+        const dateStr = new Date(timestampMillis).toISOString().split("T")[0];
 
-        const thresholds = {
-          temperature: { min: 25, max: 30, critical_low: 15, critical_high: 38 },
-          humidity: { min: 70, max: 90, critical_low: 50, critical_high: 95 },
-          moisture: { min: 40, max: 60, critical_low: 20, critical_high: 80 },
-          lux: { min: 1000, max: 10000, critical_low: 100, critical_high: 50000 },
-        };
+        // Get UID from sensor data (assuming it contains uid field)
+        const uid = newData.uid;
+        if (!uid) {
+          console.warn("⚠️ No UID found in sensor data, using default tropical thresholds");
+        }
+
+        let ecosystem = 'tropical'; // Default ecosystem
+
+        // Fetch user profile to get selected ecosystem
+        if (uid) {
+          try {
+            const profileDoc = await db.collection("profile").doc(uid).get();
+            if (profileDoc.exists) {
+              const profileData = profileDoc.data();
+              ecosystem = profileData.terrariumEco || 'tropical';
+              console.log(`✓ Using ecosystem thresholds for user ${uid}: ${ecosystem}`);
+            } else {
+              console.warn(`⚠️ Profile not found for UID: ${uid}, using default tropical thresholds`);
+            }
+          } catch (err) {
+            console.error(`❌ Error fetching user profile: ${err.message}`);
+            console.log("ℹ️ Falling back to default tropical thresholds");
+          }
+        }
+
+        // Get ecosystem-specific thresholds
+        const thresholds = ECOSYSTEM_THRESHOLDS[ecosystem];
+        console.log(`🎯 Applied thresholds for ecosystem: ${ecosystem}`);
+
+        const alerts = [];
 
         // Check temperature
         if (newData.temperature < thresholds.temperature.critical_low) {
@@ -325,7 +494,8 @@ exports.generateSensorAlerts = onValueUpdated(
             severity: "critical",
             message: `CRITICAL: Temperature too low (${newData.temperature}°C)`,
             value: newData.temperature,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            threshold: thresholds.temperature.critical_low,
+            date: dateStr,
           });
         } else if (newData.temperature > thresholds.temperature.critical_high) {
           alerts.push({
@@ -333,7 +503,26 @@ exports.generateSensorAlerts = onValueUpdated(
             severity: "critical",
             message: `CRITICAL: Temperature too high (${newData.temperature}°C)`,
             value: newData.temperature,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            threshold: thresholds.temperature.critical_high,
+            date: dateStr,
+          });
+        } else if (newData.temperature < thresholds.temperature.warning_low) {
+          alerts.push({
+            type: "temperature",
+            severity: "warning",
+            message: `WARNING: Temperature low (${newData.temperature}°C)`,
+            value: newData.temperature,
+            threshold: thresholds.temperature.warning_low,
+            date: dateStr,
+          });
+        } else if (newData.temperature > thresholds.temperature.warning_high) {
+          alerts.push({
+            type: "temperature",
+            severity: "warning",
+            message: `WARNING: Temperature high (${newData.temperature}°C)`,
+            value: newData.temperature,
+            threshold: thresholds.temperature.warning_high,
+            date: dateStr,
           });
         }
 
@@ -344,7 +533,26 @@ exports.generateSensorAlerts = onValueUpdated(
             severity: "critical",
             message: `CRITICAL: Humidity too low (${newData.humidity}%)`,
             value: newData.humidity,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            threshold: thresholds.humidity.critical_low,
+            date: dateStr,
+          });
+        } else if (newData.humidity > thresholds.humidity.critical_high) {
+          alerts.push({
+            type: "humidity",
+            severity: "critical",
+            message: `CRITICAL: Humidity too high (${newData.humidity}%)`,
+            value: newData.humidity,
+            threshold: thresholds.humidity.critical_high,
+            date: dateStr,
+          });
+        } else if (newData.humidity < thresholds.humidity.warning_low) {
+          alerts.push({
+            type: "humidity",
+            severity: "warning",
+            message: `WARNING: Humidity low (${newData.humidity}%)`,
+            value: newData.humidity,
+            threshold: thresholds.humidity.warning_low,
+            date: dateStr,
           });
         }
 
@@ -355,24 +563,98 @@ exports.generateSensorAlerts = onValueUpdated(
             severity: "critical",
             message: `CRITICAL: Soil too dry (${newData.moisture}%)`,
             value: newData.moisture,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            threshold: thresholds.moisture.critical_low,
+            date: dateStr,
+          });
+        } else if (newData.moisture > thresholds.moisture.critical_high) {
+          alerts.push({
+            type: "moisture",
+            severity: "critical",
+            message: `CRITICAL: Soil too wet (${newData.moisture}%)`,
+            value: newData.moisture,
+            threshold: thresholds.moisture.critical_high,
+            date: dateStr,
+          });
+        } else if (newData.moisture < thresholds.moisture.warning_low) {
+          alerts.push({
+            type: "moisture",
+            severity: "warning",
+            message: `WARNING: Soil dry (${newData.moisture}%)`,
+            value: newData.moisture,
+            threshold: thresholds.moisture.warning_low,
+            date: dateStr,
+          });
+        } else if (newData.moisture > thresholds.moisture.warning_high) {
+          alerts.push({
+            type: "moisture",
+            severity: "warning",
+            message: `WARNING: Soil wet (${newData.moisture}%)`,
+            value: newData.moisture,
+            threshold: thresholds.moisture.warning_high,
+            date: dateStr,
           });
         }
 
-        // Store alerts if any
+        // Check light
+        if (newData.lux < thresholds.lux.critical_low) {
+          alerts.push({
+            type: "lux",
+            severity: "critical",
+            message: `CRITICAL: Light too low (${newData.lux} lux)`,
+            value: newData.lux,
+            threshold: thresholds.lux.critical_low,
+            date: dateStr,
+          });
+        } else if (newData.lux > thresholds.lux.critical_high) {
+          alerts.push({
+            type: "lux",
+            severity: "critical",
+            message: `CRITICAL: Light too high (${newData.lux} lux)`,
+            value: newData.lux,
+            threshold: thresholds.lux.critical_high,
+            date: dateStr,
+          });
+        } else if (newData.lux < thresholds.lux.warning_low) {
+          alerts.push({
+            type: "lux",
+            severity: "warning",
+            message: `WARNING: Light low (${newData.lux} lux)`,
+            value: newData.lux,
+            threshold: thresholds.lux.warning_low,
+            date: dateStr,
+          });
+        } else if (newData.lux > thresholds.lux.warning_high) {
+          alerts.push({
+            type: "lux",
+            severity: "warning",
+            message: `WARNING: Light high (${newData.lux} lux)`,
+            value: newData.lux,
+            threshold: thresholds.lux.warning_high,
+            date: dateStr,
+          });
+        }
+
+        // Store all alerts to Firestore for email reports
         if (alerts.length > 0) {
           const batch = db.batch();
           alerts.forEach((alert) => {
             const alertRef = db.collection("alerts").doc();
-            batch.set(alertRef, alert);
+            batch.set(alertRef, {
+              ...alert,
+              ecosystem: ecosystem,
+              uid: uid,
+              timestamp: timestamp,
+              timestampMillis: timestampMillis,
+              createdAt: timestamp,
+            });
           });
           await batch.commit();
-          console.log(`✓ Created ${alerts.length} alert(s)`);
+          console.log(`✓ Stored ${alerts.length} alert(s) to Firestore for ${ecosystem} ecosystem`);
         }
 
         return null;
       } catch (error) {
-        console.error("Error generating alerts:", error);
+        console.error("Error generating sensor alerts:", error);
         return null;
       }
     });

@@ -2,26 +2,21 @@ import { Box } from "@/components/ui/box";
 import { HStack } from "@/components/ui/hstack";
 import { VStack } from "@/components/ui/vstack";
 import React, { useState, useEffect } from "react";
-import { ScrollView, StyleSheet, Text, useWindowDimensions, View, ActivityIndicator, Pressable, Alert } from "react-native";
-import { Switch } from '@/components/ui/switch';
-import {
-  Slider,
-  SliderTrack,
-  SliderFilledTrack,
-  SliderThumb,
-} from '@/components/ui/slider';
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, CheckCircle, Droplets, Thermometer, Sun, Sprout, RefreshCcw } from 'lucide-react-native';
+import { ScrollView, StyleSheet, Text, View, ActivityIndicator, Pressable } from "react-native";
+import { TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react-native';
 import { useUser } from "@/context/UserContext";
 import { generateRecommendations } from '@/components/uiRecommendation/generateRecommendations';
 import { useSensorData } from '@/context/sensorContext';
 import { useControl } from "@/context/controlContext";
+import { useEcosystem, ECOSYSTEM_INFO } from '@/components/ecosystemLimiter/ecosystemLimiter';
+import { AutoMist } from "@/components/ecosystemLimiter/AutoMist";
+import { LightCycle } from "@/components/ecosystemLimiter/LightCycle";
+import { ConnectionStatus } from "@/components/ConnectionStatus";
 
 export default function Homepage() {
-  const { profile } = useUser();
-
-
-  // Use the shared sensor context
+  const { ecosystem, ranges } = useEcosystem();
   const { currentData, historicalData, isLoading, error, getSensorData } = useSensorData();
+  const { humidifierState, lightBrightness } = useControl();
 
   const [analytics, setAnalytics] = useState<{
     trends: Record<string, any>;
@@ -34,24 +29,32 @@ export default function Homepage() {
   });
   const [message, setMessage] = useState("Connecting...");
   const [showAnalytics, setShowAnalytics] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const { humidifierState, lightBrightness, setHumidifierState, setLightBrightness } = useControl();
 
-  const dimensions = useWindowDimensions();
+  // Check if we have valid data (at least 6 readings)
+  const hasValidConnection = historicalData.length >= 6 && currentData && currentData.temperature > 0;
 
-  // Get sensor data with fallback to zeros
-  const sensorData = currentData || {
+  // Get sensor data with fallback to zeros if not enough readings
+  const sensorData = hasValidConnection ? currentData : {
     temperature: 0,
     humidity: 0,
     moisture: 0,
     lux: 0
   };
 
+  // Determine connection status
+  const getConnectionStatus = (): 'connected' | 'connecting' | 'no_connection' => {
+    if (isLoading) return 'connecting';
+    if (hasValidConnection) return 'connected';
+    return 'no_connection';
+  };
+
+  const connectionStatus = getConnectionStatus();
+
   // Analyze trends from historical data
   const analyzeTrends = (history) => {
     if (history.length < 2) return {};
 
-    const recent = history.slice(-5); // Last 5 readings
+    const recent = history.slice(-5);
     const trends = {};
 
     ['temperature', 'humidity', 'moisture', 'lux'].forEach(metric => {
@@ -88,14 +91,9 @@ export default function Homepage() {
 
   // Update analytics when sensor data changes
   useEffect(() => {
-    if (currentData && currentData.temperature > 0) {
-      setIsConnected(true);
-
-      // Analyze trends
+    if (hasValidConnection) {
       const trends = analyzeTrends(historicalData);
-
-      // Generate recommendations and health score
-      const { recommendations, healthScore } = generateRecommendations(sensorData);
+      const { recommendations, healthScore } = generateRecommendations(sensorData, ranges);
 
       setAnalytics({
         trends,
@@ -103,13 +101,13 @@ export default function Homepage() {
         healthScore
       });
 
-      // Update message
       updateMessage(sensorData, recommendations);
     } else if (error) {
-      setIsConnected(false);
       setMessage("Connection failed");
+    } else {
+      setMessage("Waiting for sensor data...");
     }
-  }, [currentData, historicalData, error]);
+  }, [currentData, historicalData, error, ranges, hasValidConnection]);
 
   const getTrendIcon = (direction: 'up' | 'down' | 'neutral' | 'stable') => {
     if (direction === 'up') return <TrendingUp size={16} color="#ff6b6b" />;
@@ -133,7 +131,6 @@ export default function Homepage() {
     return '#ff6b6b';
   };
 
-  // Manual refresh handler
   const handleRefresh = async () => {
     await getSensorData();
   };
@@ -176,7 +173,6 @@ export default function Homepage() {
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 0,
-      borderColor: "#ff0000ff",
       borderRadius: 12,
     },
     sensorName: {
@@ -208,45 +204,6 @@ export default function Homepage() {
       paddingHorizontal: 6,
       paddingVertical: 3,
       borderRadius: 8,
-    },
-    Status: {
-      borderWidth: 1,
-      borderColor: "#000",
-      alignItems: "center",
-      flex: 2,
-      borderRadius: 12,
-      gap: 4,
-      padding: 12,
-      flexDirection: "row",
-      justifyContent: "center",
-    },
-    statusDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      marginRight: 8,
-    },
-    reconnectButton: {
-      borderColor: "#000",
-      borderWidth: 1,
-      height: 50,
-      width: 50,
-      borderRadius: 12,
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: "#f5f5f5",
-    },
-    reconnectButtonDisabled: {
-      opacity: 0.5,
-    },
-    Reload: {
-      borderColor: "#00rgba(148, 148, 148, 1)",
-      borderWidth: 1,
-      height: 30,
-      width: 30,
-      borderRadius: 12,
-      justifyContent: "center",
-      alignItems: "center",
     },
     messageArea: {
       width: "100%",
@@ -284,49 +241,27 @@ export default function Homepage() {
       fontSize: 48,
       fontWeight: "bold",
     },
-    dateSettingContainer: {
-      gap: 18,
-      marginBottom: 14,
-      justifyContent: "space-between",
-      alignItems: "center",
-      flexDirection: "row",
-    },
     body: {
       gap: 24,
-    }
+    },
   });
 
   return (
-    <ScrollView style={{ ...styles.BG }}>
-      {/* display Connection Status */}
-      <HStack style={{ ...styles.dateSettingContainer }}>
-        <HStack style={{ ...styles.Status }}>
-          <View style={{
-            ...styles.statusDot,
-            backgroundColor: error ? '#ff6b6b' : '#51cf66'
-          }} />
-          {error ? (
-            <Text style={{ color: '#c33', fontSize: 13 }}>{error}</Text>
-          ) : (
-            <Text style={{ fontSize: 14, fontWeight: "600", color: "#333" }}>
-              Connected
-            </Text>
-          )}
-        </HStack>
-        <Pressable
-          style={{ ...styles.Reload }}
-          onPress={handleRefresh}
-        >
-          <RefreshCcw size={20} color={"#000"} />
-        </Pressable>
-      </HStack>
+    <ScrollView style={styles.BG}>
+      {/* Connection Status Component */}
+      <ConnectionStatus
+        connectionStatus={connectionStatus}
+        readingCount={historicalData.length}
+        onRefresh={handleRefresh}
+        showReadingCount={false}
+      />
 
-      <VStack style={{ ...styles.body }}>
+      <VStack style={styles.body}>
         {/* Health Score */}
-        {!isLoading && (
+        {!isLoading && hasValidConnection && (
           <View style={styles.healthScoreContainer}>
             <Text style={{ fontSize: 12, color: "#666", fontWeight: "600", textAlign: "center" }}>
-              🌴 Tropical Forest Health Score
+              {ECOSYSTEM_INFO[ecosystem].icon} {ECOSYSTEM_INFO[ecosystem].name} Health Score
             </Text>
             <Text style={{
               ...styles.healthScoreText,
@@ -335,20 +270,20 @@ export default function Homepage() {
               {analytics.healthScore}
             </Text>
             <Text style={{ fontSize: 12, color: "#666" }}>
-              {analytics.healthScore >= 80 ? '✨ Excellent - Tropical Paradise' :
+              {analytics.healthScore >= 80 ? '✨ Excellent - Perfect Conditions' :
                 analytics.healthScore >= 60 ? '👍 Good - Minor Adjustments Needed' :
                   analytics.healthScore >= 40 ? '⚠️ Fair - Needs Attention' : '🚨 Critical - Immediate Action Required'}
             </Text>
             <View style={{ marginTop: 12, gap: 4, width: '100%' }}>
               <Text style={{ fontSize: 11, color: "#495057", textAlign: "center" }}>
-                Target: Temp 25-30°C | Humidity 70-90%
+                Target: Temp {ranges.temperature.min}-{ranges.temperature.max}°C | Humidity {ranges.humidity.min}-{ranges.humidity.max}%
               </Text>
               <Text style={{ fontSize: 11, color: "#495057", textAlign: "center" }}>
-                Moisture 40-60% | Light 1k-10k lux (understory)
+                Moisture {ranges.moisture.min}-{ranges.moisture.max}% | Light {ranges.lux.understory_min}-{ranges.lux.understory_max} lux
               </Text>
             </View>
           </View>
-        )}
+         )} 
 
         {/* Sensors */}
         {isLoading ? (
@@ -356,59 +291,66 @@ export default function Homepage() {
             <ActivityIndicator size="large" color="#000" />
             <Text style={{ marginTop: 10 }}>Loading sensor data...</Text>
           </View>
-        ) : (
-          <HStack style={{ gap: 4, flex: 1, borderWidth: 0, borderColor: "#ddd", padding: 4, borderRadius: 12, justifyContent: "space-between" }}>
+        ) : !hasValidConnection ? ( 
+          <View style={{ alignItems: "center", padding: 40, backgroundColor: "#f8f9fa", borderRadius: 12 }}>
+            <AlertTriangle size={40} color="#ff6b6b" />
+            <Text style={{ marginTop: 16, fontSize: 16, fontWeight: "600", color: "#333" }}>
+              No Connection
+            </Text>
+          </View>
+        ) : ( 
+          <HStack style={{ gap: 4, flex: 1, borderWidth: 0, padding: 4, borderRadius: 12, justifyContent: "space-between" }}>
             {/* Humidity */}
-            <VStack style={{ ...styles.sensorIndicatorBAr }}>
-              <HStack style={{ ...styles.sensorIndecator }}>
+            <VStack style={styles.sensorIndicatorBAr}>
+              <HStack style={styles.sensorIndecator}>
                 {analytics.trends.humidity && (
                   <View style={styles.trendBadge}>
                     {getTrendIcon(analytics.trends.humidity.direction)}
                   </View>
                 )}
-                <Text style={{ ...styles.textIndiactor }}>
+                <Text style={styles.textIndiactor}>
                   {sensorData.humidity.toFixed(1)}
                 </Text>
-                <Text style={{ ...styles.textUnit }}>%</Text>
+                <Text style={styles.textUnit}>%</Text>
               </HStack>
-              <Text style={{ ...styles.sensorName }}>Humidity</Text>
+              <Text style={styles.sensorName}>Humidity</Text>
             </VStack>
 
             {/* Temperature */}
-            <VStack style={{ ...styles.sensorIndicatorBAr }}>
-              <HStack style={{ ...styles.sensorIndecator }}>
+            <VStack style={styles.sensorIndicatorBAr}>
+              <HStack style={styles.sensorIndecator}>
                 {analytics.trends.temperature && (
                   <View style={styles.trendBadge}>
                     {getTrendIcon(analytics.trends.temperature.direction)}
                   </View>
                 )}
-                <Text style={{ ...styles.textIndiactor }}>
+                <Text style={styles.textIndiactor}>
                   {sensorData.temperature.toFixed(1)}
                 </Text>
-                <Text style={{ ...styles.textUnit }}>°C</Text>
+                <Text style={styles.textUnit}>°C</Text>
               </HStack>
-              <Text style={{ ...styles.sensorName }}>Temperature</Text>
+              <Text style={styles.sensorName}>Temperature</Text>
             </VStack>
 
             {/* Moisture */}
-            <VStack style={{ ...styles.sensorIndicatorBAr }}>
-              <HStack style={{ ...styles.sensorIndecator }}>
+            <VStack style={styles.sensorIndicatorBAr}>
+              <HStack style={styles.sensorIndecator}>
                 {analytics.trends.moisture && (
                   <View style={styles.trendBadge}>
                     {getTrendIcon(analytics.trends.moisture.direction)}
                   </View>
                 )}
-                <Text style={{ ...styles.textIndiactor }}>
+                <Text style={styles.textIndiactor}>
                   {sensorData.moisture}
                 </Text>
-                <Text style={{ ...styles.textUnit }}>%</Text>
+                <Text style={styles.textUnit}>%</Text>
               </HStack>
-              <Text style={{ ...styles.sensorName }}>Moisture</Text>
+              <Text style={styles.sensorName}>Moisture</Text>
             </VStack>
 
             {/* Light */}
-            <VStack style={{ ...styles.sensorIndicatorBAr }}>
-              <HStack style={{ ...styles.sensorIndecator }}>
+            <VStack style={styles.sensorIndicatorBAr}>
+              <HStack style={styles.sensorIndecator}>
                 {analytics.trends.lux && (
                   <View style={styles.trendBadge}>
                     {getTrendIcon(analytics.trends.lux.direction)}
@@ -417,37 +359,33 @@ export default function Homepage() {
                 <Text style={{ ...styles.textIndiactor, fontSize: 22 }}>
                   {sensorData.lux > 10000 ? '10k+' : Math.round(sensorData.lux)}
                 </Text>
-                <Text style={{ ...styles.textUnit }}>lux</Text>
+                <Text style={styles.textUnit}>lux</Text>
               </HStack>
-              <Text style={{ ...styles.sensorName }}>Light</Text>
+              <Text style={styles.sensorName}>Light</Text>
             </VStack>
           </HStack>
-        )}
+        )} 
 
         {/* Message area */}
-        <HStack style={{
-          ...styles.messageArea,
-          backgroundColor: analytics.recommendations[0]?.severity === 'danger' ? '#ffe3e3' :
-            analytics.recommendations[0]?.severity === 'warning' ? '#fff4e6' :
-              '#d3f9d8'
-        }}>
-          <Text style={{
-            fontSize: 14,
-            fontWeight: "600",
-            color: "#333",
+        {hasValidConnection && (
+          <HStack style={{
+            ...styles.messageArea,
+            backgroundColor: analytics.recommendations[0]?.severity === 'danger' ? '#ffe3e3' :
+              analytics.recommendations[0]?.severity === 'warning' ? '#fff4e6' :
+                '#d3f9d8'
           }}>
-            {message}
-          </Text>
-          {analytics.recommendations[0]?.severity === 'danger' ? (
-            <Pressable
-              style={{ alignItems: "center", justifyContent: "center" }}
-              onPress={() => setShowAnalytics(!showAnalytics)}
-            >
-              <AlertTriangle size={20} color={"#000"} />
-              <Text style={{ ...styles.textUnit }}>How to fix?</Text>
-            </Pressable>
-          ) :
-            analytics.recommendations[0]?.severity === 'warning' ? (
+            <Text style={{ fontSize: 14, fontWeight: "600", color: "#333" }}>
+              {message}
+            </Text>
+            {analytics.recommendations[0]?.severity === 'danger' ? (
+              <Pressable
+                style={{ alignItems: "center", justifyContent: "center" }}
+                onPress={() => setShowAnalytics(!showAnalytics)}
+              >
+                <AlertTriangle size={20} color={"#000"} />
+                <Text style={styles.textUnit}>How to fix?</Text>
+              </Pressable>
+            ) : analytics.recommendations[0]?.severity === 'warning' ? (
               <Pressable
                 style={{ alignItems: "center", justifyContent: "center" }}
                 onPress={() => setShowAnalytics(!showAnalytics)}
@@ -456,10 +394,11 @@ export default function Homepage() {
                 <Text>Click Here!</Text>
               </Pressable>
             ) : null}
-        </HStack>
+          </HStack>
+        )}
 
         {/* Analytics & Recommendations */}
-        {showAnalytics && analytics.recommendations.length > 0 && (
+        {hasValidConnection && showAnalytics && analytics.recommendations.length > 0 && (
           <View style={styles.analyticsCard}>
             <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 8 }}>
               Recommendations
@@ -487,69 +426,25 @@ export default function Homepage() {
         )}
 
         {/* Control panel */}
-        <View style={{ ...styles.ControlContainer }}>
+        <View style={styles.ControlContainer}>
           <Box style={{
             borderWidth: 0,
-            borderColor: "#ddd",
             padding: 12,
             justifyContent: "center",
             alignItems: "center",
             borderRadius: 8,
             backgroundColor: "#f9f9f9"
           }}>
-            <Text style={{
-              fontSize: 16,
-              fontWeight: "bold",
-            }}>
+            <Text style={{ fontSize: 16, fontWeight: "bold" }}>
               Controls
             </Text>
           </Box>
 
           <View style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 8 }}>
-            <VStack style={{
-              justifyContent: "center",
-              alignItems: "center",
-              borderBottomWidth: 1,
-              borderColor: "#ddd",
-              padding: 16,
-            }}>
-              <Text style={{ marginTop: 8 }}>Mist Humidifier</Text>
-            </VStack>
-
-            <VStack style={{
-              justifyContent: "center",
-              alignItems: "center",
-              gap: 12,
-              padding: 16,
-            }}>
-              <Text>Light Brightness</Text>
-
-              <Slider
-                value={lightBrightness}
-                onChange={(value) => setLightBrightness(value)}
-                defaultValue={30}
-                size="md"
-                orientation="horizontal"
-                isDisabled={false}
-                isReversed={false}
-                maxValue={255}
-                minValue={0}
-              >
-                <SliderTrack>
-                  <SliderFilledTrack />
-                </SliderTrack>
-                <SliderThumb />
-              </Slider>
-              <Text style={{ fontSize: 14, fontWeight: "600" }}>
-                {Math.round((lightBrightness / 255) * 100)}%
-              </Text>
-            </VStack>
+            <AutoMist />
+            <LightCycle />
           </View>
         </View>
-
-
-
-
       </VStack>
     </ScrollView>
   );

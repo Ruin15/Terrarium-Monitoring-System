@@ -140,7 +140,7 @@ const HistoricalBarChart = ({ dayData, metric, color, width, height }) => {
   const maxValue = Math.max(...values);
   const minValue = Math.min(...values);
   const valueRange = maxValue - minValue || 1;
-  const barWidth = chartWidth / 4;
+  const barWidth = chartWidth / 10;
   const barSpacing = chartWidth / 8;
 
   // Grid lines
@@ -622,7 +622,7 @@ export default function Analytics() {
               fontSize: 12, 
               marginTop: 12 
             }}>
-              {selectedDayData.readingCount} readings on {formatDate(selectedDayData.date)}
+              readings on {formatDate(selectedDayData.date)}
             </Text>
           </View>
         ) : (

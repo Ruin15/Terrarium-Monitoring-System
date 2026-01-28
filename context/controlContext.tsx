@@ -22,29 +22,29 @@ export const ControlProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Initialize Realtime Database
     const db = getDatabase(app);
 
-    // Initialize: Read initial values from Firebase and listen for changes
+    // Initialize: Read initial values from Firebase and listen for changes1504
     useEffect(() => {
         try {
             const controlsRef = ref(db, 'sensorData/controls');
             
-            console.log('Setting up Firebase listener for controls...');
+            // console.log('Setting up Firebase listener for controls...');
             
             const unsubscribe = onValue(
                 controlsRef,
                 (snapshot) => {
                     if (snapshot.exists()) {
                         const data = snapshot.val();
-                        console.log('Controls data received from Firebase:', data);
+                        // console.log('Controls data received from Firebase:', data);
                         
                         if (data.humidifierState !== undefined) {
                             setHumidifierStateLocal(data.humidifierState);
-                            console.log('Humidifier state updated:', data.humidifierState);
+                            // console.log('Humidifier state updated:', data.humidifierState);
                         }
                         
                         if (data.lightBrightness !== undefined) {
                             const validBrightness = Math.max(0, Math.min(255, data.lightBrightness));
                             setLightBrightnessLocal(validBrightness);
-                            console.log('Light brightness updated:', validBrightness);
+                            // console.log('Light brightness updated:', validBrightness);
                         }
                     } else {
                         console.log('No controls data found in Firebase');
@@ -60,11 +60,11 @@ export const ControlProvider: React.FC<{ children: React.ReactNode }> = ({ child
             );
 
             return () => {
-                console.log('Cleaning up Firebase listener');
+                // console.log('Cleaning up Firebase listener');
                 off(controlsRef);
             };
         } catch (err) {
-            console.error('Error initializing controls:', err);
+            // console.error('Error initializing controls:', err);
             setError(err instanceof Error ? err.message : 'Unknown error');
             setIsLoading(false);
         }
@@ -73,17 +73,17 @@ export const ControlProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Update humidifier state in Firebase
     const updateHumidifierState = async (state: boolean) => {
         try {
-            console.log('Updating humidifier state to:', state);
+            // console.log('Updating humidifier state to:', state);
             setError(null);
             
-            await set(ref(db, 'sensorData/controls/humidifierState'), state);
+            // await set(ref(db, 'sensorData/controls/humidifierState'), state);
             setHumidifierStateLocal(state);
             
-            console.log('✓ Humidifier state updated successfully');
+            // console.log('✓ Humidifier state updated successfully');
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : 'Failed to update humidifier';
             setError(errorMsg);
-            console.error('Error updating humidifier state:', err);
+            // console.error('Error updating humidifier state:', err);
             throw err;
         }
     };
@@ -91,7 +91,7 @@ export const ControlProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Update light brightness in Firebase (0-255 for analogWrite)
     const updateLightBrightness = async (brightness: number) => {
         try {
-            console.log('Updating light brightness to:', brightness);
+            // console.log('Updating light brightness to:', brightness);
             setError(null);
             
             const validBrightness = Math.max(0, Math.min(255, Math.round(brightness)));
@@ -99,11 +99,11 @@ export const ControlProvider: React.FC<{ children: React.ReactNode }> = ({ child
             await set(ref(db, 'sensorData/controls/lightBrightness'), validBrightness);
             setLightBrightnessLocal(validBrightness);
             
-            console.log('✓ Light brightness updated successfully');
+            // console.log('✓ Light brightness updated successfully');
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : 'Failed to update brightness';
             setError(errorMsg);
-            console.error('Error updating light brightness:', err);
+            // console.error('Error updating light brightness:', err);
             throw err;
         }
     };
