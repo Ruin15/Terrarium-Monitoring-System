@@ -55,23 +55,3 @@ export interface AuthContextType {
   register: (firstName: string, lastName: string, email: string, password: string) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<void>;
 }
-
-export interface ReportData {
-  startDate: string; // e.g. '2024-06-01'
-  endDate: string;   // e.g. '2024-06-30'
-  averageTemperature: number;
-  averageHumidity: number;
-  averageMoisture: number;
-  averageLux: number;
-  maxTemperature: number;
-  minTemperature: number;
-  maxHumidity: number;
-  minHumidity: number;
-  maxMoisture: number;
-  minMoisture: number;
-  maxLux: number;
-  minLux: number;
-  // Add any other aggregated fields you need
-}
-
-

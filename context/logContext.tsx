@@ -251,6 +251,7 @@ export const LogProvider: React.FC<LogProviderProps> = ({
   // };
 
   // Fetch latest readings
+  
   const fetchLatestReadings = async () => {
     try {
       const docRef = doc(db, 'latestReadings', 'current');
@@ -304,7 +305,7 @@ export const LogProvider: React.FC<LogProviderProps> = ({
     const q = query(
       collection(db, 'dailySummaries'),
       orderBy('date', 'desc'),
-      limit(7)
+      limit(30)
     );
 
     const unsubscribe = onSnapshot(

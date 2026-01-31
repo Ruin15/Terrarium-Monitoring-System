@@ -47,7 +47,7 @@ export const ControlProvider: React.FC<{ children: React.ReactNode }> = ({ child
                             // console.log('Light brightness updated:', validBrightness);
                         }
                     } else {
-                        console.log('No controls data found in Firebase');
+                        // console.log('No controls data found in Firebase');
                     }
                     setIsLoading(false);
                     setError(null);
@@ -76,7 +76,7 @@ export const ControlProvider: React.FC<{ children: React.ReactNode }> = ({ child
             // console.log('Updating humidifier state to:', state);
             setError(null);
             
-            // await set(ref(db, 'sensorData/controls/humidifierState'), state);
+            await set(ref(db, 'sensorData/controls/humidifierState'), state);
             setHumidifierStateLocal(state);
             
             // console.log('✓ Humidifier state updated successfully');

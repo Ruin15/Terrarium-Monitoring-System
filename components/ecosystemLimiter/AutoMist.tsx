@@ -53,7 +53,7 @@ export const AutoMist: React.FC = () => {
     if (controllerRestriction.canUpdate && controllerRestriction.reason === 'Connected and synced') {
       const newEnabled = controllerRestriction.enabled;
       if (newEnabled !== config.enabled) {
-        console.log('🔄 Syncing AutoMist status from Firestore:', newEnabled);
+        // console.log('🔄 Syncing AutoMist status from Firestore:', newEnabled);
         setConfig(prev => ({ ...prev, enabled: newEnabled }));
       }
     }
@@ -72,7 +72,7 @@ export const AutoMist: React.FC = () => {
       await updateDoc(userRef, {
         'ControlAutomation.AutoMistStatus': enabled
       });
-      console.log('✅ AutoMist status updated in Firestore:', enabled);
+      // console.log('✅ AutoMist status updated in Firestore:', enabled);
       await refreshProfile();
     } catch (error) {
       console.error('❌ Error updating AutoMist status:', error);
@@ -101,35 +101,35 @@ export const AutoMist: React.FC = () => {
 
   const activateMist = async () => {
     if (isInCooldown()) {
-      console.log('AutoMist: In cooldown period, skipping');
+      // console.log('AutoMist: In cooldown period, skipping');
       return;
     }
 
-    console.log(`AutoMist: Activating mist for ${config.mistDuration} seconds`);
+    // console.log(`AutoMist: Activating mist for ${config.mistDuration} seconds`);
     setIsActive(true);
 
     try {
       // Write directly to RTDB for ESP32
       const humidifierRef = ref(realtimeDb , 'sensorData/controls/humidifierState');
       await set(humidifierRef, true);
-      console.log('✅ Humidifier state set to TRUE in RTDB');
+      // console.log('✅ Humidifier state set to TRUE in RTDB');
       
       // Also update through control context
       await setHumidifierState(true);
       setLastMistTime(Date.now());
 
       mistTimerRef.current = setTimeout(async () => {
-        console.log('AutoMist: Deactivating mist');
+        // console.log('AutoMist: Deactivating mist');
 
         try {
           // Write directly to RTDB for ESP32
           const humidifierRef = ref(realtimeDb , 'sensorData/controls/humidifierState');
           await set(humidifierRef, false);
-          console.log('✅ Humidifier state set to FALSE in RTDB');
+          // console.log('✅ Humidifier state set to FALSE in RTDB');
           
           await setHumidifierState(false);
         } catch (error) {
-          console.error('AutoMist: Error deactivating mist:', error);
+          // console.error('AutoMist: Error deactivating mist:', error);
         }
 
         setIsActive(false);
@@ -153,7 +153,7 @@ export const AutoMist: React.FC = () => {
     const currentMoisture = currentData.moisture;
 
     if (currentMoisture < threshold && !isActive && !isInCooldown()) {
-      console.log(`AutoMist: Moisture ${currentMoisture}% below threshold ${threshold}%, activating mist`);
+      // console.log(`AutoMist: Moisture ${currentMoisture}% below threshold ${threshold}%, activating mist`);
       activateMist();
     }
   }, [currentData, config.enabled, config.triggerThreshold, ranges.moisture]);

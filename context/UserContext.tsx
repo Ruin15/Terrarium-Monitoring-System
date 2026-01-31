@@ -35,12 +35,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const refreshProfile = async () => {
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      console.log("⚠️ Cannot refresh: No authenticated user");
+      // console.log("⚠️ Cannot refresh: No authenticated user");
       return;
     }
 
     try {
-      console.log("🔄 Refreshing profile for UID:", currentUser.uid);
+      // console.log("🔄 Refreshing profile for UID:", currentUser.uid);
       const profileRef = doc(db, "profile", currentUser.uid);
       const docSnap = await getDoc(profileRef);
       
@@ -49,12 +49,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           id: docSnap.id,
           ...(docSnap.data() as Omit<Profile, "id">),
         };
-        console.log("✅ Profile refreshed successfully:", {
-          id: profileData.id,
-          firstName: profileData.firstName,
-          lastName: profileData.lastName,
-          terrariumEco: profileData.terrariumEco
-        });
+        // console.log("✅ Profile refreshed successfully:", {
+        //   id: profileData.id,
+        //   firstName: profileData.firstName,
+        //   lastName: profileData.lastName,
+        //   terrariumEco: profileData.terrariumEco
+        // });
         setProfile(profileData);
         setError(null);
       } else {
@@ -77,37 +77,37 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     const inAuthPage = segments[0] === 'login' || segments[0] === 'register';
     const inProtectedScreens = segments[0] === '(screens)';
 
-    console.log('🛡️ Auth Guard:', {
-      hasProfile: !!profile,
-      segments: segments[0],
-      inAuthPage,
-      inProtectedScreens
-    });
+    // console.log('🛡️ Auth Guard:', {
+    //   hasProfile: !!profile,
+    //   segments: segments[0],
+    //   inAuthPage,
+    //   inProtectedScreens
+    // });
 
     if (!profile && inProtectedScreens) {
-      console.log('🚫 Redirecting to login - no profile');
+      // console.log('🚫 Redirecting to login - no profile');
       router.replace('/login');
     } else if (profile && inAuthPage) {
-      console.log('✅ Redirecting to app - profile loaded');
+      // console.log('✅ Redirecting to app - profile loaded');
       router.replace('/(screens)');
     }
   }, [profile, loading, authInitialized, segments]);
 
   useEffect(() => {
-    console.log("🔵 ProfileContext initializing");
+    // console.log("🔵 ProfileContext initializing");
     
     let profileUnsubscribe: (() => void) | null = null;
 
     // Setup profile listener for authenticated user
     const setupProfileListener = (authUser: User) => {
-      console.log("🎯 Setting up profile listener for:", {
-        uid: authUser.uid,
-        email: authUser.email
-      });
+      // console.log("🎯 Setting up profile listener for:", {
+      //   uid: authUser.uid,
+      //   email: authUser.email
+      // });
 
       // Clean up any existing listener
       if (profileUnsubscribe) {
-        console.log("🧹 Cleaning up previous profile listener");
+        // console.log("🧹 Cleaning up previous profile listener");
         profileUnsubscribe();
         profileUnsubscribe = null;
       }
@@ -130,22 +130,22 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
             ...(docSnap.data() as Omit<Profile, "id">),
           };
 
-          console.log("✅ Profile loaded:", {
-            id: profileData.id,
-            uid: profileData.uid,
-            firstName: profileData.firstName,
-            lastName: profileData.lastName,
-            email: profileData.email,
-            terrariumEco: profileData.terrariumEco,
-            documentIdMatchesUid: profileData.id === profileData.uid
-          });
+          // console.log("✅ Profile loaded:", {
+          //   id: profileData.id,
+          //   uid: profileData.uid,
+          //   firstName: profileData.firstName,
+          //   lastName: profileData.lastName,
+          //   email: profileData.email,
+          //   terrariumEco: profileData.terrariumEco,
+          //   documentIdMatchesUid: profileData.id === profileData.uid
+          // });
 
           setProfile(profileData);
           setError(null);
           setLoading(false);
 
           // Set up real-time listener for updates
-          console.log("👂 Setting up real-time profile listener");
+          // console.log("👂 Setting up real-time profile listener");
           profileUnsubscribe = onSnapshot(
             profileRef,
             (snapshot) => {
@@ -154,11 +154,11 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
                   id: snapshot.id,
                   ...(snapshot.data() as Omit<Profile, "id">),
                 };
-                console.log("📥 Profile updated:", {
-                  firstName: updatedProfile.firstName,
-                  lastName: updatedProfile.lastName,
-                  terrariumEco: updatedProfile.terrariumEco
-                });
+                // console.log("📥 Profile updated:", {
+                //   firstName: updatedProfile.firstName,
+                //   lastName: updatedProfile.lastName,
+                //   terrariumEco: updatedProfile.terrariumEco
+                // });
                 setProfile(updatedProfile);
                 setError(null);
               } else {
@@ -190,25 +190,25 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     // Listen to auth state changes
-    console.log("👂 Setting up auth state listener");
+    // console.log("👂 Setting up auth state listener");
     const authUnsubscribe = onAuthStateChanged(
       auth,
       (authUser) => {
-        console.log("🟢 Auth state changed:", {
-          hasUser: !!authUser,
-          uid: authUser?.uid,
-          email: authUser?.email,
-          timestamp: new Date().toISOString()
-        });
+        // console.log("🟢 Auth state changed:", {
+        //   hasUser: !!authUser,
+        //   uid: authUser?.uid,
+        //   email: authUser?.email,
+        //   timestamp: new Date().toISOString()
+        // });
 
         // Mark auth as initialized
         if (!authInitialized) {
-          console.log("✅ Auth initialized");
+          // console.log("✅ Auth initialized");
           setAuthInitialized(true);
         }
 
         if (!authUser) {
-          console.log("⚪ No user - clearing state");
+          // console.log("⚪ No user - clearing state");
           
           // Clean up profile listener
           if (profileUnsubscribe) {
@@ -239,7 +239,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Cleanup on unmount
     return () => {
-      console.log("🔴 ProfileContext unmounting");
+      // console.log("🔴 ProfileContext unmounting");
       authUnsubscribe();
       if (profileUnsubscribe) {
         profileUnsubscribe();
@@ -248,18 +248,18 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // Log state changes
-  useEffect(() => {
-    console.log("📊 Context State:", {
-      authInitialized,
-      loading,
-      hasProfile: !!profile,
-      profileId: profile?.id,
-      profileUid: profile?.uid,
-      profileEmail: profile?.email,
-      terrariumEco: profile?.terrariumEco,
-      error,
-    });
-  }, [authInitialized, loading, profile, error]);
+  // useEffect(() => {
+  //   console.log("📊 Context State:", {
+  //     authInitialized,
+  //     loading,
+  //     hasProfile: !!profile,
+  //     profileId: profile?.id,
+  //     profileUid: profile?.uid,
+  //     profileEmail: profile?.email,
+  //     terrariumEco: profile?.terrariumEco,
+  //     error,
+  //   });
+  // }, [authInitialized, loading, profile, error]);
 
   return (
     <UserContext.Provider value={{ profile, loading, error, refreshProfile }}>

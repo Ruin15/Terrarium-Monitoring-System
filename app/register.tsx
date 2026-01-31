@@ -212,15 +212,15 @@ export default function RegisterScreen() {
         try {
             setLoading(true);
 
-            console.log("Step 1: Creating auth user...");
+            // console.log("Step 1: Creating auth user...");
             const response = await createUserWithEmailAndPassword(
                 auth,
                 email,
                 password
             );
-            console.log("Step 2: User registered:", response.user.uid);
+            // console.log("Step 2: User registered:", response.user.uid);
 
-            console.log("Step 3: Creating user profile in Firestore...");
+            // console.log("Step 3: Creating user profile in Firestore...");
 
             // Add a timeout wrapper
             const firestorePromise = setDoc(doc(db, "profile", response.user.uid), {
@@ -236,7 +236,7 @@ export default function RegisterScreen() {
 
             await Promise.race([firestorePromise, timeoutPromise]);
 
-            console.log("Step 4: Profile created successfully!");
+            // console.log("Step 4: Profile created successfully!");
             handleToastSuccess();
 
             setTimeout(() => {
@@ -252,7 +252,7 @@ export default function RegisterScreen() {
 
             // Clean up auth user if Firestore failed
             if (auth.currentUser) {
-                console.log("Cleaning up auth user...");
+                // console.log("Cleaning up auth user...");
                 try {
                     await auth.currentUser.delete();
                 } catch (deleteError) {

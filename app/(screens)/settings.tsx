@@ -32,7 +32,7 @@ export default function SettingsScreen() {
     // Sync ecosystem with user's stored preference on mount and when profile changes
     useEffect(() => {
         if (profile?.terrariumEco && profile.terrariumEco !== ecosystem) {
-            console.log("🔄 Syncing ecosystem from user profile:", profile.terrariumEco);
+            // console.log("🔄 Syncing ecosystem from user profile:", profile.terrariumEco);
             setEcosystem(profile.terrariumEco as EcosystemType);
         }
     }, [profile?.terrariumEco]);
@@ -55,7 +55,7 @@ export default function SettingsScreen() {
                 terrariumEco: selectedEcosystem
             });
 
-            console.log("✅ Terrarium ecosystem updated in Firestore:", selectedEcosystem);
+            // console.log("✅ Terrarium ecosystem updated in Firestore:", selectedEcosystem);
 
             // Refresh profile to ensure sync
             await refreshProfile();

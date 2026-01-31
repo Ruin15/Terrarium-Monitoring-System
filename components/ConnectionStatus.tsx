@@ -29,7 +29,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
   useEffect(() => {
     const isConnected = connectionStatus === 'connected';
     setIsConnected(isConnected);
-    console.log('📡 Connection context updated:', isConnected);
+    // console.log('📡 Connection context updated:', isConnected);
   }, [connectionStatus, setIsConnected]);
 
   // Handle timeout logic
@@ -39,10 +39,10 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
 
     // Set timeout only for 'connecting' status
     if (connectionStatus === 'connecting') {
-      console.log(`⏱️ Starting ${timeout}s connection timeout...`);
+      // console.log(`⏱️ Starting ${timeout}s connection timeout...`);
       
       timeoutRef.current = setTimeout(() => {
-        console.log('⏱️ Connection timeout reached');
+        // console.log('⏱️ Connection timeout reached');
         setTimeoutTriggered(true);
       }, timeout * 1000) as unknown as NodeJS.Timeout;
     }

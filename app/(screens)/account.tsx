@@ -43,40 +43,12 @@ export default function AccountScreen() {
   // Manual refresh state
   const [manualRefreshing, setManualRefreshing] = useState(false);
 
-  // Debug logging with detailed info
-  // useEffect(() => {
-  //   console.log("🔍 AccountScreen - Context State:", {
-  //     loading,
-  //     hasProfile: !!profile,
-  //     profileId: profile?.id,
-  //     profileUid: profile?.uid,
-  //     profileEmail: profile?.email,
-  //     profileFirstName: profile?.firstName,
-  //     profileLastName: profile?.lastName,
-  //     contextError,
-  //     uidMatch: profile?.uid === profile?.id,
-  //     timestamp: new Date().toISOString(),
-  //     authCurrentUser: auth.currentUser
-  //   });
-
-  //   // Check if UIDs match
-  //   if (profile) {
-  //     if (profile.uid !== profile.id) {
-  //       console.warn("⚠️ UID MISMATCH DETECTED:", {
-  //         profileUidField: profile.uid,
-  //         documentId: profile.id,
-  //         message: "The document ID does not match the profile's UID field"
-  //       });
-  //     } else {
-  //       console.log("✅ UID MATCH: Document ID matches profile UID field");
-  //     }
-  //   }
-  // }, [loading, profile, contextError]);
+ 
 
   // Initialize name fields from profile
   useEffect(() => {
     if (profile) {
-      console.log("📝 Initializing name fields from profile");
+      // console.log("📝 Initializing name fields from profile");
       setFirstName(profile.firstName || "");
       setLastName(profile.lastName || "");
     }
@@ -84,13 +56,13 @@ export default function AccountScreen() {
 
   // Manual refresh handler
   const handleManualRefresh = async () => {
-    console.log("🔄 Manual refresh requested");
+    // console.log("🔄 Manual refresh requested");
     setManualRefreshing(true);
     try {
       await refreshProfile();
-      console.log("✅ Manual refresh completed");
+      // console.log("✅ Manual refresh completed");
     } catch (error) {
-      console.error("❌ Manual refresh failed:", error);
+      // console.error("❌ Manual refresh failed:", error);
     } finally {
       setTimeout(() => setManualRefreshing(false), 1000);
     }
@@ -152,11 +124,11 @@ export default function AccountScreen() {
       setNameLoading(true);
       setNameError("");
 
-      console.log("💾 Updating name for profile:", {
-        uid: profile.uid,
-        email: profile.email,
-        documentPath: `profile/${profile.uid}`
-      });
+      // console.log("💾 Updating name for profile:", {
+      //   uid: profile.uid,
+      //   email: profile.email,
+      //   documentPath: `profile/${profile.uid}`
+      // });
       
       // Use the profile's UID as the document ID
       const profileRef = doc(db, "profile", profile.uid);
@@ -173,7 +145,7 @@ export default function AccountScreen() {
         lastName: lastName.trim(),
       });
 
-      console.log("✅ Name updated successfully in Firestore");
+      // console.log("✅ Name updated successfully in Firestore");
       
       // Refresh the profile to get the latest data
       await refreshProfile();
@@ -210,7 +182,7 @@ export default function AccountScreen() {
       setPasswordLoading(true);
       setPasswordError("");
 
-      console.log("🔐 Changing password for user:", profile.email);
+      // console.log("🔐 Changing password for user:", profile.email);
 
       // Get the current Firebase Auth user
       const currentUser = auth.currentUser;
@@ -225,15 +197,15 @@ export default function AccountScreen() {
       // Update password
       await updatePassword(currentUser, newPassword);
 
-      console.log("✅ Password changed successfully");
-      setPasswordSuccess(true);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-      setTimeout(() => {
-        setPasswordSuccess(false);
-        setEditingPassword(null);
-      }, 2000);
+      // console.log("✅ Password changed successfully");
+      // setPasswordSuccess(true);
+      // setCurrentPassword("");
+      // setNewPassword("");
+      // setConfirmPassword("");
+      // setTimeout(() => {
+      //   setPasswordSuccess(false);
+      //   setEditingPassword(null);
+      // }, 2000);
 
     } catch (error: any) {
       console.error("❌ Error changing password:", error);
@@ -269,7 +241,7 @@ export default function AccountScreen() {
 
   // Loading state
   if (loading) {
-    console.log("⏳ Showing loading state");
+    // console.log("⏳ Showing loading state");
     return (
       <Box className="flex-1 justify-center items-center bg-white dark:bg-slate-900">
         <ActivityIndicator size="large" color={isDark ? "#fff" : "#000"} />
@@ -282,7 +254,7 @@ export default function AccountScreen() {
 
   // Error state
   if (contextError) {
-    console.log("⚠️ Showing error state:", contextError);
+    // console.log("⚠️ Showing error state:", contextError);
     return (
       <Box className="flex-1 justify-center items-center bg-white dark:bg-slate-900 px-6">
         <AlertCircle size={48} color="#ef4444" />
@@ -319,7 +291,7 @@ export default function AccountScreen() {
 
   // No profile
   if (!profile) {
-    console.log("⚠️ No profile available");
+    // console.log("⚠️ No profile available");
     
     return (
       <Box className="flex-1 justify-center items-center bg-white dark:bg-slate-900 px-6">

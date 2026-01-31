@@ -15,8 +15,9 @@ import { Text } from "@/components/ui/text";
 import { Icon, CloseIcon } from "@/components/ui/icon";
 import { HStack } from "@/components/ui/hstack";
 import { VStack } from "@/components/ui/vstack";
-import { auth } from "@/firebase/firebaseConfig";
+import { auth, realtimeDb } from "@/firebase/firebaseConfig";
 import { signOut } from "firebase/auth";
+import { ref, remove } from "firebase/database";
 import { useRouter } from "expo-router";
 import { Spinner } from "@/components/ui/spinner";
 import { AlertCircle, LogOut } from "lucide-react-native";
@@ -29,17 +30,39 @@ export default function LogoutModal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ NEW: Clear ESP32 authentication token from RTDB
+  const clearESP32AuthToken = async () => {
+    try {
+      console.log("🧹 Clearing ESP32 auth token...");
+      
+      const tokenRef = ref(realtimeDb, 'esp32Auth/currentUser');
+      await remove(tokenRef);
+      
+      console.log("✅ ESP32 auth token cleared successfully");
+      console.log("   ESP32 will no longer have authenticated access");
+      
+    } catch (error) {
+      console.error("❌ Failed to clear ESP32 auth token:", error);
+      // Don't throw - logout should succeed even if token cleanup fails
+    }
+  };
+
   const handleLogout = async () => {
     try {
       setLoading(true);
       setError(null);
       
       console.log("🚪 Logging out user...");
+      console.log("   Current user:", auth.currentUser?.email);
+      
+      // ✅ Clear ESP32 authentication token first
+      await clearESP32AuthToken();
       
       // Sign out from Firebase
       await signOut(auth);
       
       console.log("✅ User signed out successfully");
+      console.log("   ESP32 access has been revoked");
       
       // Close modal
       setVisible(false);
@@ -92,6 +115,10 @@ export default function LogoutModal() {
             <VStack space="md">
               <Text className="text-slate-600">
                 Are you sure you want to log out of your account?
+              </Text>
+              
+              <Text className="text-slate-500 text-sm">
+                Note: Logging out will revoke ESP32 device access until you log back in.
               </Text>
 
               {error && (

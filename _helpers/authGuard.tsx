@@ -4,8 +4,10 @@
 import { useEffect } from 'react';
 import { useRouter, useSegments } from 'expo-router';
 import { useUser } from '@/context/UserContext';
+import { useESP32TokenManager } from '@/_helpers/esp32TokenManager';
 
 export function useProtectedRoute() {
+  useESP32TokenManager(); // Initialize ESP32 token management
   const { profile, loading } = useUser();
   const segments = useSegments();
   const router = useRouter();
@@ -26,11 +28,11 @@ export function useProtectedRoute() {
 
     if (!profile && inProtectedGroup) {
       // User is not signed in but trying to access protected route
-      console.log('🚫 Redirecting to login - user not authenticated');
+      // console.log('🚫 Redirecting to login - user not authenticated');
       router.replace('/login');
     } else if (profile && inAuthGroup) {
       // User is signed in but still on auth pages
-      console.log('✅ Redirecting to app - user authenticated');
+      // console.log('✅ Redirecting to app - user authenticated');
       router.replace('/(screens)');
     }
   }, [profile, loading, segments]);
