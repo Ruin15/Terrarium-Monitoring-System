@@ -120,6 +120,64 @@ async function sendAlertEmail(userEmail, alert, ecosystem) {
 
 
 /**
+ * Cloud Function: Cleanup old alerts
+ * Runs daily to delete alert data older than 7 days
+ * Helps maintain database performance and manage storage costs
+ */
+exports.cleanupOldAlerts = onSchedule(
+    {
+      schedule: "every 24 hours",
+      region: "asia-southeast1",
+    },
+    async (event) => {
+      try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const cutoffDate = sevenDaysAgo.toISOString().split("T")[0];
+        const cutoffTimestamp = sevenDaysAgo.getTime();
+
+        console.log(`🗑️ Starting alert cleanup for alerts older than ${cutoffDate}`);
+
+        // Query alerts older than 7 days using the date field
+        const oldAlertsQuery = db.collection("alerts")
+            .where("date", "<", cutoffDate)
+            .limit(500); // Process in batches to avoid timeout
+
+        const snapshot = await oldAlertsQuery.get();
+
+        if (snapshot.empty) {
+          console.log("✓ No old alerts to delete");
+          return null;
+        }
+
+        // Delete alerts in batch
+        const batch = db.batch();
+        snapshot.docs.forEach((doc) => {
+          batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+        console.log(`✓ Deleted ${snapshot.size} old alerts from before ${cutoffDate}`);
+
+        // If we hit the limit, there might be more to delete
+        // Schedule another cleanup run
+        if (snapshot.size === 500) {
+          console.log("⚠️ Batch limit reached (500 docs), more alerts may need cleanup");
+          console.log("💡 Tip: Consider running cleanup more frequently or increasing batch size");
+        }
+
+        return {
+          deleted: snapshot.size,
+          cutoffDate: cutoffDate,
+          cutoffTimestamp: cutoffTimestamp,
+        };
+      } catch (error) {
+        console.error("❌ Error cleaning up old alerts:", error);
+        return null;
+      }
+    });
+
+/**
  * Cloud Function: Store sensor data to Firestore
  * Triggers whenever sensorData is updated in Realtime Database
  * Creates aggregated records in Firestore (NO raw sensor readings)
@@ -619,7 +677,7 @@ exports.generateSensorAlerts = onValueUpdated(
             .where("timestampMillis", "<", endOfDay)
             .get();
 
-        if (dailyAlertsQuery.size >= 50) { //5
+        if (dailyAlertsQuery.size >= 50) { // 5
           console.log(
               `📊 Daily limit: ${dailyAlertsQuery.size} alerts today for ${uid}`,
           );

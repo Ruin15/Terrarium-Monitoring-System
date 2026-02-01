@@ -4,10 +4,8 @@ import { VStack } from "@/components/ui/vstack";
 import React, { useState, useEffect } from "react";
 import { ScrollView, StyleSheet, Text, View, ActivityIndicator, Pressable } from "react-native";
 import { TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react-native';
-import { useUser } from "@/context/UserContext";
 import { generateRecommendations } from '@/components/uiRecommendation/generateRecommendations';
 import { useSensorData } from '@/context/sensorContext';
-import { useControl } from "@/context/controlContext";
 import { useEcosystem, ECOSYSTEM_INFO } from '@/components/ecosystemLimiter/ecosystemLimiter';
 import { AutoMist } from "@/components/ecosystemLimiter/AutoMist";
 import { LightCycle } from "@/components/ecosystemLimiter/LightCycle";
@@ -16,8 +14,6 @@ import { ConnectionStatus } from "@/components/ConnectionStatus";
 export default function Homepage() {
   const { ecosystem, ranges } = useEcosystem();
   const { currentData, historicalData, isLoading, error, getSensorData } = useSensorData();
-  const { humidifierState, lightBrightness } = useControl();
-
   const [analytics, setAnalytics] = useState<{
     trends: Record<string, any>;
     recommendations: Array<{ icon: string; severity: 'danger' | 'warning' | 'success' | 'info'; title: string; message: string; action: string }>;

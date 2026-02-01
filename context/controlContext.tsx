@@ -4,25 +4,25 @@ import app from '../firebase/firebaseConfig'; // Imported initialized app
 
 interface ControlContextType {
     humidifierState: boolean;
-    lightBrightness: number;
+    lightState: boolean;
     isLoading: boolean;
     error: string | null;
     setHumidifierState: (state: boolean) => Promise<void>;
-    setLightBrightness: (brightness: number) => Promise<void>;
+    setLightState: (state: boolean) => Promise<void>;
 }
 
 const ControlContext = createContext<ControlContextType | undefined>(undefined);
 
 export const ControlProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [humidifierState, setHumidifierStateLocal] = useState(false);
-    const [lightBrightness, setLightBrightnessLocal] = useState(30);
+    const [lightState, setLightStateLocal] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     // Initialize Realtime Database
     const db = getDatabase(app);
 
-    // Initialize: Read initial values from Firebase and listen for changes1504
+    // Initialize: Read initial values from Firebase and listen for changes
     useEffect(() => {
         try {
             const controlsRef = ref(db, 'sensorData/controls');
@@ -41,10 +41,9 @@ export const ControlProvider: React.FC<{ children: React.ReactNode }> = ({ child
                             // console.log('Humidifier state updated:', data.humidifierState);
                         }
                         
-                        if (data.lightBrightness !== undefined) {
-                            const validBrightness = Math.max(0, Math.min(255, data.lightBrightness));
-                            setLightBrightnessLocal(validBrightness);
-                            // console.log('Light brightness updated:', validBrightness);
+                        if (data.lightState !== undefined) {
+                            setLightStateLocal(data.lightState);
+                            // console.log('Light state updated:', data.lightState);
                         }
                     } else {
                         // console.log('No controls data found in Firebase');
@@ -88,33 +87,31 @@ export const ControlProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
     };
 
-    // Update light brightness in Firebase (0-255 for analogWrite)
-    const updateLightBrightness = async (brightness: number) => {
+    // Update light state in Firebase
+    const updateLightState = async (state: boolean) => {
         try {
-            // console.log('Updating light brightness to:', brightness);
+            // console.log('Updating light state to:', state);
             setError(null);
             
-            const validBrightness = Math.max(0, Math.min(255, Math.round(brightness)));
+            await set(ref(db, 'sensorData/controls/lightState'), state);
+            setLightStateLocal(state);
             
-            await set(ref(db, 'sensorData/controls/lightBrightness'), validBrightness);
-            setLightBrightnessLocal(validBrightness);
-            
-            // console.log('✓ Light brightness updated successfully');
+            // console.log('✓ Light state updated successfully');
         } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'Failed to update brightness';
+            const errorMsg = err instanceof Error ? err.message : 'Failed to update light';
             setError(errorMsg);
-            // console.error('Error updating light brightness:', err);
+            // console.error('Error updating light state:', err);
             throw err;
         }
     };
 
     const value: ControlContextType = {
         humidifierState,
-        lightBrightness,
+        lightState,
         isLoading,
         error,
         setHumidifierState: updateHumidifierState,
-        setLightBrightness: updateLightBrightness,
+        setLightState: updateLightState,
     };
 
     return (

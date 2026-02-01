@@ -3,8 +3,7 @@ import { ref, onValue, off } from 'firebase/database';
 import { getDatabase } from 'firebase/database';
 import app from '../firebase/firebaseConfig';
 
-const ARDUINO_IP = "88.8.88.112";
-// const ARDUINO_IP = "172.23.243.14";
+const ARDUINO_IP = "10.28.61.14";
 
 // Initialize Firebase Realtime Database
 const database = getDatabase(app);

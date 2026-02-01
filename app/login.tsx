@@ -3,9 +3,7 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  Image,
   useWindowDimensions,
-  View,
 } from 'react-native'
 import { signInWithEmailAndPassword, onAuthStateChanged, User } from 'firebase/auth'
 import { auth, db, realtimeDb } from '@/firebase/firebaseConfig'
@@ -17,15 +15,6 @@ import {
   ToastDescription,
   useToast,
 } from '@/components/ui/toast'
-import {
-  Modal,
-  ModalBackdrop,
-  ModalContent,
-  ModalHeader,
-  ModalCloseButton,
-  ModalBody,
-  ModalFooter,
-} from '@/components/ui/modal'
 import { HStack } from '@/components/ui/hstack'
 import { VStack } from '@/components/ui/vstack'
 import { CloseIcon, HelpCircleIcon, Icon } from '@/components/ui/icon'
@@ -33,11 +22,8 @@ import { Box } from '@/components/ui/box'
 import { ButtonText } from '@/components/ui/button'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
-import { Divider } from '@/components/ui/divider'
-import { Heading } from '@/components/ui/heading'
 import { collection, query, where, getDoc, doc } from 'firebase/firestore'
 import ForgotPasswordModal from '@/modals/forgotPasswordModal'
-import { Profile } from '@/_types'
 import ESP32TokenManager from '@/_helpers/esp32TokenManager'
 
 
@@ -268,26 +254,53 @@ export default function LoginScreen() {
     <Box
       style={{
         flex: 1,
-        backgroundColor: '#fcfcfcff',
+        backgroundColor: '#E2E1E1 ',
         borderWidth: 0,
         alignItems: 'center',
-        paddingHorizontal: 50,
+        padding: 20,
+        justifyContent: 'center',
       }}
     >
+
       {/* Header */}
+      <HStack style={{ 
+        gap: 12, 
+        alignItems: 'center', 
+        borderWidth: 3 }}> 
       <Box
         style={{
-          marginTop: 40,
-          marginBottom: 30,
           justifyContent: 'center',
           alignItems: 'center',
+          padding: 28,
+          borderRadius: 12,
+          backgroundColor: "#AFDE4E",
+          flex: 1
         }}
       >
-        <Text style={{ color: 'black', fontSize: 24 }}>Welcome back!</Text>
-        <Text style={{ color: 'black', fontSize: 14 }}>
-          Please enter your details to log into the system.
-        </Text>
+        <Text 
+        style={{ 
+          color: 'black', 
+          fontSize: 24, 
+          fontFamily: "lufga",
+          fontWeight: 'bold',
+          }}>Terra</Text>
       </Box>
+        <Box
+          style={{
+            marginBottom: 20,
+            justifyContent: 'center',
+            alignItems: 'center',
+            flex: 2
+          }}
+        >
+          <Text 
+          style={{ 
+            color: 'black', 
+            fontSize: 15, 
+            fontFamily: "lufga",
+            }}>welcome to Terra App, let us monitor your terrarium better</Text>
+        </Box>
+      </HStack>
 
       {/* Inputs */}
       <Box style={{ borderWidth: 0, width: 320 }}>
