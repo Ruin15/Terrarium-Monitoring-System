@@ -3,7 +3,7 @@ import { ref, onValue, off } from 'firebase/database';
 import { getDatabase } from 'firebase/database';
 import app from '../firebase/firebaseConfig';
 
-const ARDUINO_IP = "88.8.88.112";
+const ARDUINO_IP = "10.28.61.14";
 
 // Initialize Firebase Realtime Database
 const database = getDatabase(app);
@@ -92,14 +92,14 @@ export const SensorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   // Listen to Firebase Realtime Database
   useEffect(() => {
-    console.log('Setting up Firebase listener...');
+    // // console.log('Setting up Firebase listener...');
     const sensorDataRef = ref(database, 'sensorData');
     
     // Set up real-time listener
     const unsubscribe = onValue(sensorDataRef, (snapshot) => {
       if (snapshot.exists()) {
         const firebaseData = snapshot.val();
-        console.log('Firebase data received:', firebaseData);
+        // // console.log('Firebase data received:', firebaseData);
         
         // Map Firebase data to our SensorData format
         const now = new Date();
@@ -128,7 +128,7 @@ export const SensorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setIsLoading(false);
         setDataSource('firebase');
       } else {
-        console.log('No data available in Firebase');
+        // // console.log('No data available in Firebase');
         setError('No data available in Firebase');
       }
     }, (error) => {
@@ -140,14 +140,14 @@ export const SensorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     // Fallback: Try ESP32 direct connection if Firebase fails
     const fallbackTimer = setTimeout(() => {
       if (dataSource === 'none') {
-        console.log('Firebase not responding, trying ESP32 direct connection...');
+        // // console.log('Firebase not responding, trying ESP32 direct connection...');
         getSensorDataFromESP32();
       }
     }, 5000);
 
     // Cleanup function
     return () => {
-      console.log('Cleaning up Firebase listener...');
+      // // console.log('Cleaning up Firebase listener...');
       off(sensorDataRef);
       clearTimeout(fallbackTimer);
     };
@@ -160,7 +160,7 @@ export const SensorProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     // Only poll ESP32 if Firebase hasn't connected after 10 seconds
     const checkInterval = setTimeout(() => {
       if (dataSource === 'none' || dataSource === 'esp32') {
-        console.log('Starting ESP32 polling as backup...');
+        // console.log('Starting ESP32 polling as backup...');
         interval = setInterval(() => {
           getSensorDataFromESP32();
         }, 3000);

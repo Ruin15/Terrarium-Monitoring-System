@@ -1,25 +1,11 @@
-import { Box } from "@/components/ui/box";
-import { HStack } from "@/components/ui/hstack";
-import { VStack } from "@/components/ui/vstack";
 import React, { useState, useEffect } from "react";
 import { ScrollView, StyleSheet, Text, View, Dimensions, Pressable } from "react-native";
 import Svg, { Line, Circle, Text as SvgText, Polyline, Rect } from 'react-native-svg';
 import { TrendingUp, Droplets, Thermometer, Sun, Sprout } from 'lucide-react-native';
 import { useSensorData } from '@/context/sensorContext';
-import {
-  Select,
-  SelectTrigger,
-  SelectInput,
-  SelectIcon,
-  SelectPortal,
-  SelectBackdrop,
-  SelectContent,
-  SelectDragIndicator,
-  SelectDragIndicatorWrapper,
-  SelectItem,
-} from '@/components/ui/select';
-import { ChevronDownIcon } from '@/components/ui/icon';
+import { SelectHistoricalData } from '@/components/SelectHistoricalData';
 import { useLog } from '@/context/logContext';
+import { HStack } from "@/components/ui/hstack";
 
 // Simple Line Chart Component
 const SimpleLineChart = ({ data, metric, color, width, height }) => {
@@ -60,14 +46,14 @@ const SimpleLineChart = ({ data, metric, color, width, height }) => {
             y1={line.y}
             x2={width - padding.right}
             y2={line.y}
-            stroke="#e0e0e0"
-            strokeWidth="1"
-            strokeDasharray="3,3"
+            stroke="#3d3d3d"
+            strokeWidth="1" //3
+            strokeDasharray="1,1" //3
           />
           <SvgText
-            x={padding.left - 8}
-            y={line.y + 4}
-            fontSize="10"
+            x={padding.left - 4} //8
+            y={line.y + 2} //4 
+            fontSize="5" //10
             fill="#666"
             textAnchor="end"
           >
@@ -81,7 +67,7 @@ const SimpleLineChart = ({ data, metric, color, width, height }) => {
         points={points}
         fill="none"
         stroke={color}
-        strokeWidth="3"
+        strokeWidth="1" //3
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -95,10 +81,10 @@ const SimpleLineChart = ({ data, metric, color, width, height }) => {
             key={index}
             cx={x}
             cy={y}
-            r="4"
+            r="2" //4
             fill={color}
-            stroke="#fff"
-            strokeWidth="2"
+            stroke="#3a3a3a"
+            strokeWidth="1" //2
           />
         );
       })}
@@ -113,7 +99,7 @@ const SimpleLineChart = ({ data, metric, color, width, height }) => {
             key={index}
             x={x}
             y={height - 10}
-            fontSize="10"
+            fontSize="5" //10
             fill="#666"
             textAnchor="middle"
           >
@@ -136,11 +122,11 @@ const HistoricalBarChart = ({ dayData, metric, color, width, height }) => {
   const metricData = dayData[metric];
   const values = [metricData.min, metricData.avg, metricData.max];
   const labels = ['Min', 'Avg', 'Max'];
-  
+
   const maxValue = Math.max(...values);
   const minValue = Math.min(...values);
   const valueRange = maxValue - minValue || 1;
-  const barWidth = chartWidth / 4;
+  const barWidth = chartWidth / 10;
   const barSpacing = chartWidth / 8;
 
   // Grid lines
@@ -161,14 +147,14 @@ const HistoricalBarChart = ({ dayData, metric, color, width, height }) => {
             y1={line.y}
             x2={width - padding.right}
             y2={line.y}
-            stroke="#e0e0e0"
+            stroke="#464646"
             strokeWidth="1"
             strokeDasharray="3,3"
           />
           <SvgText
-            x={padding.left - 8}
-            y={line.y + 4}
-            fontSize="12"
+            x={padding.left - 4} //8
+            y={line.y + 2} //4 
+            fontSize="5" //12
             fill="#666"
             textAnchor="end"
           >
@@ -182,10 +168,10 @@ const HistoricalBarChart = ({ dayData, metric, color, width, height }) => {
         const x = padding.left + barSpacing + (index * (barWidth + barSpacing));
         const barHeight = ((value - minValue) / valueRange) * chartHeight;
         const y = padding.top + chartHeight - barHeight;
-        
+
         // Color intensity based on type
         const fillColor = index === 1 ? color : `${color}99`; // avg is solid, min/max are semi-transparent
-        
+
         return (
           <React.Fragment key={index}>
             {/* Bar */}
@@ -198,7 +184,7 @@ const HistoricalBarChart = ({ dayData, metric, color, width, height }) => {
               rx="8"
               ry="8"
             />
-            
+
             {/* Value label on top of bar */}
             <SvgText
               x={x + barWidth / 2}
@@ -210,7 +196,7 @@ const HistoricalBarChart = ({ dayData, metric, color, width, height }) => {
             >
               {value.toFixed(1)}
             </SvgText>
-            
+
             {/* X-axis label */}
             <SvgText
               x={x + barWidth / 2}
@@ -232,9 +218,9 @@ const HistoricalBarChart = ({ dayData, metric, color, width, height }) => {
 export default function Analytics() {
   // Use the sensor context instead of managing state locally
   const { historicalData, currentData, isLoading, error } = useSensorData();
-  const { 
-    dailySummaries, 
-    hourlyAggregates, 
+  const {
+    dailySummaries,
+    hourlyAggregates,
     latestReadings,
     getDailySummaryByDate,
     fetchDailySummaries,
@@ -245,7 +231,7 @@ export default function Analytics() {
   const [timeRange, setTimeRange] = useState('30');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDayData, setSelectedDayData] = useState(null);
-  
+
   const screenWidth = Dimensions.get("window").width;
   const chartWidth = screenWidth - 82; // Adjust for padding/margin
 
@@ -297,7 +283,7 @@ export default function Analytics() {
 
   const getHistoricalStats = () => {
     if (!selectedDayData) return { min: 0, max: 0, avg: 0 };
-    
+
     const metricData = selectedDayData[selectedMetric];
     if (!metricData) return { min: 0, max: 0, avg: 0 };
 
@@ -311,13 +297,13 @@ export default function Analytics() {
   const stats = getStats();
   const historicalStats = getHistoricalStats();
   const chartData = getFilteredData();
-  
+
   // Sensors - all available metrics
   const metrics = [
-    { key: 'temperature', label: 'Temp', icon: Thermometer, unit: '°C', color: '#ffa726' },
+    { key: 'temperature', label: 'Temp', icon: Thermometer, unit: '°C', color: '#bd1616' },
     { key: 'humidity', label: 'Humidity', icon: Droplets, unit: '%', color: '#66bb6a' },
     { key: 'moisture', label: 'Moisture', icon: Sprout, unit: '%', color: '#29b6f6' },
-    { key: 'lux', label: 'Light', icon: Sun, unit: 'lux', color: '#ffee58' }
+    { key: 'lux', label: 'Light', icon: Sun, unit: 'lux', color: '#DEC808' }
   ];
 
   const currentMetric = metrics.find(m => m.key === selectedMetric);
@@ -417,7 +403,8 @@ export default function Analytics() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>Sensor Analytics</Text>
+      <HStack style={{ marginBottom: 16, justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={styles.header}>Sensor Analytics</Text>
 
       {/* Error Display */}
       {error && (
@@ -427,12 +414,15 @@ export default function Analytics() {
           borderRadius: 8,
           marginBottom: 16,
         }}>
-          <Text style={{ color: '#c33', fontSize: 13 }}>⚠️ {error}</Text>
+          <Text style={{ color: '#c33', fontSize: 13 }}>{error}</Text>
         </View>
       )}
+      </HStack>
+      
+  
 
       {/* Metric Selector */}
-      <View style={{...styles.metricSelector, borderWidth: 0}}>
+      <View style={{ ...styles.metricSelector, borderWidth: 0 }}>
         {metrics.map((metric) => {
           const Icon = metric.icon;
           const isActive = selectedMetric === metric.key;
@@ -462,11 +452,11 @@ export default function Analytics() {
       </View>
 
       {/* Real-time Chart Card */}
-      <View style={{...styles.chartCard, borderWidth: 1}}>
+      <View style={{ ...styles.chartCard, borderWidth: 1 }}>
         <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 12, color: '#000' }}>
           Live Data
         </Text>
-        
+
         {/* Time Range Selector */}
         <View style={styles.timeRangeSelector}>
           {['30', '60', 'all'].map((range) => (
@@ -491,9 +481,9 @@ export default function Analytics() {
 
         {/* Chart */}
         {historicalData.length > 1 ? (
-          <View style={{ 
-            backgroundColor: '#fafafa', 
-            borderRadius: 12, 
+          <View style={{
+            backgroundColor: '#fafafa',
+            borderRadius: 12,
             padding: 8,
             marginVertical: 12,
             borderWidth: 0
@@ -507,8 +497,8 @@ export default function Analytics() {
             />
           </View>
         ) : (
-          <View style={{ 
-            padding: 60, 
+          <View style={{
+            padding: 60,
             alignItems: 'center',
             backgroundColor: '#fafafa',
             borderRadius: 12,
@@ -524,7 +514,7 @@ export default function Analytics() {
         )}
 
         {/* Statistics */}
-        <View style={{...styles.statsContainer, borderWidth: 0}}>
+        <View style={{ ...styles.statsContainer, borderWidth: 0 }}>
           <View style={styles.statBox}>
             <Text style={styles.statLabel}>Current</Text>
             <Text style={[styles.statValue, { color: currentMetric?.color }]}>
@@ -556,54 +546,27 @@ export default function Analytics() {
         </View>
       </View>
 
-      {/* Historical Chart Card */}
-      <View style={{...styles.chartCard, borderWidth: 1}}>
+      {/* SelectHistoricalData Chart Card section */}
+      <View style={{ ...styles.chartCard, borderWidth: 1 }}>
         <Text style={{ fontSize: 16, fontWeight: '700', marginBottom: 12, color: '#000' }}>
           Historical Data
         </Text>
 
         {/* Date Selector */}
-        <Select
+        <SelectHistoricalData
           selectedValue={selectedDate}
-          onValueChange={(value) => setSelectedDate(value)}
-        >
-          <SelectTrigger className="w-full bg-white" variant="rounded">
-            <SelectInput
-              placeholder="Select Day"
-              value={selectedDate ? formatDate(selectedDate) : "Select Day"}
-            />
-            <SelectIcon className="mr-3" as={ChevronDownIcon} />
-          </SelectTrigger>
-          <SelectPortal>
-            <SelectBackdrop />
-            <SelectContent>
-              <SelectDragIndicatorWrapper>
-                <SelectDragIndicator />
-              </SelectDragIndicatorWrapper>
-              <Box className="p-2">
-                {logLoading ? (
-                  <SelectItem label="Loading..." value="loading" isDisabled />
-                ) : dailySummaries.length === 0 ? (
-                  <SelectItem label="No data available" value="none" isDisabled />
-                ) : (
-                  dailySummaries.map((summary) => (
-                    <SelectItem
-                      key={summary.date}
-                      label={formatDate(summary.date)}
-                      value={summary.date}
-                    />
-                  ))
-                )}
-              </Box>
-            </SelectContent>
-          </SelectPortal>
-        </Select>
+          onValueChange={setSelectedDate}
+          dates={dailySummaries?.map(s => s.date) || []}
+          formatDate={formatDate}
+          loading={logLoading}
+          placeholder="Select Day"
+        />
 
         {/* Chart of selected history data */}
         {selectedDayData ? (
-          <View style={{ 
-            backgroundColor: '#fafafa', 
-            borderRadius: 12, 
+          <View style={{
+            backgroundColor: '#fafafa',
+            borderRadius: 12,
             padding: 8,
             marginVertical: 12,
             borderWidth: 0,
@@ -615,19 +578,19 @@ export default function Analytics() {
               width={chartWidth}
               height={300}
             />
-            
-            <Text style={{ 
-              textAlign: 'center', 
-              color: '#666', 
-              fontSize: 12, 
-              marginTop: 12 
+
+            <Text style={{
+              textAlign: 'center',
+              color: '#666',
+              fontSize: 12,
+              marginTop: 12
             }}>
-              {selectedDayData.readingCount} readings on {formatDate(selectedDayData.date)}
+              readings on {formatDate(selectedDayData.date)}
             </Text>
           </View>
         ) : (
-          <View style={{ 
-            padding: 60, 
+          <View style={{
+            padding: 60,
             alignItems: 'center',
             backgroundColor: '#fafafa',
             borderRadius: 12,
@@ -641,7 +604,7 @@ export default function Analytics() {
 
         {/* Statistics of selected history data */}
         {selectedDayData && (
-          <View style={{...styles.statsContainer, borderWidth: 0}}>
+          <View style={{ ...styles.statsContainer, borderWidth: 0 }}>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>Average</Text>
               <Text style={[styles.statValue, { color: currentMetric?.color }]}>
