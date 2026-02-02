@@ -1,6 +1,3 @@
-import { Box } from "@/components/ui/box";
-import { HStack } from "@/components/ui/hstack";
-import { VStack } from "@/components/ui/vstack";
 import React, { useState, useEffect } from "react";
 import { ScrollView, StyleSheet, Text, View, Dimensions, Pressable } from "react-native";
 import Svg, { Line, Circle, Text as SvgText, Polyline, Rect } from 'react-native-svg';
@@ -8,6 +5,7 @@ import { TrendingUp, Droplets, Thermometer, Sun, Sprout } from 'lucide-react-nat
 import { useSensorData } from '@/context/sensorContext';
 import { SelectHistoricalData } from '@/components/SelectHistoricalData';
 import { useLog } from '@/context/logContext';
+import { HStack } from "@/components/ui/hstack";
 
 // Simple Line Chart Component
 const SimpleLineChart = ({ data, metric, color, width, height }) => {
@@ -302,10 +300,10 @@ export default function Analytics() {
 
   // Sensors - all available metrics
   const metrics = [
-    { key: 'temperature', label: 'Temp', icon: Thermometer, unit: '°C', color: '#ffa726' },
+    { key: 'temperature', label: 'Temp', icon: Thermometer, unit: '°C', color: '#bd1616' },
     { key: 'humidity', label: 'Humidity', icon: Droplets, unit: '%', color: '#66bb6a' },
     { key: 'moisture', label: 'Moisture', icon: Sprout, unit: '%', color: '#29b6f6' },
-    { key: 'lux', label: 'Light', icon: Sun, unit: 'lux', color: '#ffee58' }
+    { key: 'lux', label: 'Light', icon: Sun, unit: 'lux', color: '#DEC808' }
   ];
 
   const currentMetric = metrics.find(m => m.key === selectedMetric);
@@ -405,7 +403,8 @@ export default function Analytics() {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.header}>Sensor Analytics</Text>
+      <HStack style={{ marginBottom: 16, justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={styles.header}>Sensor Analytics</Text>
 
       {/* Error Display */}
       {error && (
@@ -415,9 +414,12 @@ export default function Analytics() {
           borderRadius: 8,
           marginBottom: 16,
         }}>
-          <Text style={{ color: '#c33', fontSize: 13 }}>⚠️ {error}</Text>
+          <Text style={{ color: '#c33', fontSize: 13 }}>{error}</Text>
         </View>
       )}
+      </HStack>
+      
+  
 
       {/* Metric Selector */}
       <View style={{ ...styles.metricSelector, borderWidth: 0 }}>

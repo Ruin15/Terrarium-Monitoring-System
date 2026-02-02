@@ -279,7 +279,7 @@ export default function Homepage() {
               </Text>
             </View>
           </View>
-         )} 
+         )}  
 
         {/* Sensors */}
         {isLoading ? (
@@ -287,14 +287,14 @@ export default function Homepage() {
             <ActivityIndicator size="large" color="#000" />
             <Text style={{ marginTop: 10 }}>Loading sensor data...</Text>
           </View>
-        ) : !hasValidConnection ? ( 
+         ) : !hasValidConnection ? (  
           <View style={{ alignItems: "center", padding: 40, backgroundColor: "#f8f9fa", borderRadius: 12 }}>
             <AlertTriangle size={40} color="#ff6b6b" />
             <Text style={{ marginTop: 16, fontSize: 16, fontWeight: "600", color: "#333" }}>
               No Connection
             </Text>
           </View>
-        ) : ( 
+         ) : (  
           <HStack style={{ gap: 4, flex: 1, borderWidth: 0, padding: 4, borderRadius: 12, justifyContent: "space-between" }}>
             {/* Humidity */}
             <VStack style={styles.sensorIndicatorBAr}>
@@ -360,7 +360,7 @@ export default function Homepage() {
               <Text style={styles.sensorName}>Light</Text>
             </VStack>
           </HStack>
-        )} 
+         )}  
 
         {/* Message area */}
         {hasValidConnection && (
@@ -391,7 +391,7 @@ export default function Homepage() {
               </Pressable>
             ) : null}
           </HStack>
-        )}
+         )} 
 
         {/* Analytics & Recommendations */}
         {hasValidConnection && showAnalytics && analytics.recommendations.length > 0 && (
@@ -419,7 +419,7 @@ export default function Homepage() {
               </View>
             ))}
           </View>
-        )}
+         )} 
 
         {/* Control panel */}
         <View style={styles.ControlContainer}>
@@ -436,7 +436,7 @@ export default function Homepage() {
             </Text>
           </Box>
 
-          <View style={{ borderWidth: 1, borderColor: "#ddd", borderRadius: 8 }}>
+          <View style={{ borderWidth: 0, borderColor: "#ddd", borderRadius: 8, gap: 4}}>
             <AutoMist />
             <LightCycle />
           </View>

@@ -254,7 +254,6 @@ export default function LoginScreen() {
     <Box
       style={{
         flex: 1,
-        backgroundColor: '#E2E1E1 ',
         borderWidth: 0,
         alignItems: 'center',
         padding: 20,
@@ -263,15 +262,30 @@ export default function LoginScreen() {
     >
 
       {/* Header */}
+      <VStack 
+      style={{ 
+        width: 320,
+        backgroundColor: '#E2E1E1 ',
+        borderRadius: 12,
+        alignItems: 'center',
+        padding: 20,
+        justifyContent: 'center',
+       }} 
+      space="lg" 
+      >
       <HStack style={{ 
         gap: 12, 
         alignItems: 'center', 
-        borderWidth: 3 }}> 
+        justifyContent: 'center',  
+        }}> 
       <Box
         style={{
           justifyContent: 'center',
           alignItems: 'center',
-          padding: 28,
+          paddingTop: 13,
+          paddingBottom: 13,
+          paddingLeft: 28,
+          paddingRight: 28,
           borderRadius: 12,
           backgroundColor: "#AFDE4E",
           flex: 1
@@ -287,7 +301,6 @@ export default function LoginScreen() {
       </Box>
         <Box
           style={{
-            marginBottom: 20,
             justifyContent: 'center',
             alignItems: 'center',
             flex: 2
@@ -296,14 +309,14 @@ export default function LoginScreen() {
           <Text 
           style={{ 
             color: 'black', 
-            fontSize: 15, 
+            fontSize: 12, 
             fontFamily: "lufga",
             }}>welcome to Terra App, let us monitor your terrarium better</Text>
         </Box>
       </HStack>
 
       {/* Inputs */}
-      <Box style={{ borderWidth: 0, width: 320 }}>
+      <Box style={{ borderWidth: 0, minWidth: 300, maxWidth: 320 }}>
         <Text style={styles.label}>Email</Text>
         <TextInput
           placeholder="Enter Your Email"
@@ -324,23 +337,43 @@ export default function LoginScreen() {
           autoCapitalize="none"
           style={styles.inputs}
         />
-      </Box>
 
-      {/* Forgot Password Button */}
+        {/* Forgot Password Button */}
       <Box
         style={{
-          width: 320,
+          minWidth: 300,
+          maxWidth: 320,
+          justifyContent: 'flex-end',
           alignItems: 'flex-end',
           borderWidth: 0,
-          marginTop: 10,
+          borderColor: 'red',
         }}
       >
-        <Button variant="link" onPress={() => setShowModal(true)}>
+        {/* <Button variant="link" onPress={() => setShowModal(true)}>
           <ButtonText style={{ color: 'black', fontSize: 14 }}>
             Forgot Password?
           </ButtonText>
-        </Button>
+        </Button> */}
       </Box>
+
+      </Box>
+
+      
+
+      <Button
+          style={{ backgroundColor: '#AFDE4E', borderRadius: 12, height: 36, padding: 28, minWidth: 300, maxWidth: 320, }}
+          onPress={handleLogin}
+        >
+          <ButtonText style={{ color: 'black', fontSize: 20, fontFamily: "lufga", fontWeight: 'bold' }}>
+            {loading ? (
+              <Spinner size="small" color="black" style={{ marginTop: 7 }} />
+            ) : (
+              'Log in'
+            )}
+          </ButtonText>
+      </Button>
+      </VStack>
+
 
       {/* Login Button */}
       <Box
@@ -349,30 +382,21 @@ export default function LoginScreen() {
           borderWidth: 0,
           marginTop: 30,
           marginBottom: 30,
+          alignContent: 'center',
+          justifyContent: 'center',
         }}
       >
+        <Text style={{ color: 'black', fontSize: 14, fontFamily: "lufga", textAlign: 'center', borderWidth: 0, marginBottom: 4}}>I don't have an account.</Text>
         <Button
-          style={{ backgroundColor: '#CDCCCC', borderRadius: 8, height: 36 }}
-          onPress={handleLogin}
-        >
-          <ButtonText style={{ color: 'black', fontSize: 14 }}>
-            {loading ? (
-              <Spinner size="small" color="black" style={{ marginTop: 7 }} />
-            ) : (
-              'Log in'
-            )}
-          </ButtonText>
-        </Button>
-
-        <Button
-          style={{ backgroundColor: '#CDCCCC', borderRadius: 8, height: 36, marginTop: 8 }}
+          style={{ backgroundColor: '#CDCCCC', borderRadius: 12, height: 36, padding: 28, minWidth: 300, maxWidth: 320, }}
           onPress={() => router.push('/register')}
         >
-          <ButtonText style={{ color: 'black', fontSize: 14 }}>
+          <ButtonText style={{ color: 'black', fontSize: 20, fontFamily: "lufga", fontWeight: 'bold' }}>
             Register
           </ButtonText>
         </Button>
       </Box>
+
 
       <ForgotPasswordModal
         visible={showModal}
@@ -406,9 +430,9 @@ const styles = StyleSheet.create({
   },
   inputs: {
     borderWidth: 1,
-    borderColor: 'black',
-    borderRadius: 8,
-    padding: 8,
+    borderColor: 'gray',
+    borderRadius: 12,
+    padding: 10,
     color: '#000000ff',
   },
   label: {

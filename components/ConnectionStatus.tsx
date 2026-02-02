@@ -122,6 +122,7 @@ export const ConnectionStatus: React.FC<ConnectionStatusProps> = ({
       justifyContent: 'space-between',
       alignItems: 'center',
       marginBottom: 12,
+      gap: 8,
     },
     statusBox: {
       borderWidth: 1,

@@ -1,0 +1,20 @@
+
+Brevo Code{
+hostname: @
+data: brevo-code:abd8382212cb93c6e6dc33a5a507cfab
+}
+
+DKIM 1 record{
+    hostname: brevo1._domainkey
+    data: b1.tearrarium-iot-monitoring-firebaseapp-com.dkim.brevo.com
+}
+
+DKIM 2 record{
+    hostname: brevo2._domainkey
+    data: b2.tearrarium-iot-monitoring-firebaseapp-com.dkim.brevo.com
+}
+
+DMARC record{
+    hostname: _dmarc
+    data: v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com
+}

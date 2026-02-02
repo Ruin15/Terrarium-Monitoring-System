@@ -269,32 +269,63 @@ export default function RegisterScreen() {
 
     return (
         <>
-            <Center style={{ flex: 1 }}>
+            <Center style={{ flex: 1, backgroundColor: "#FFFFFFff" }}>
                 <Box
                     style={{
-                        borderRadius: 12,
-                        borderWidth: 0,
-                        width: 320,
-                        backgroundColor: "white",
+                        gap: 12,
                     }}
                 >
-                    <View style={{ padding: 30, alignContent: "center" }}>
+                    <View style={{
+                         padding: 12, 
+                         alignContent: "center", 
+                         borderRadius: 12,
+                         borderWidth: 0,
+                        width: 320,
+                        backgroundColor: "#E2E1E1",
+                          }}>
+                        <VStack style={{ 
+                            marginBottom: 20, 
+                            gap: 12, 
+                            }}>
                         <HStack>
                             <Pressable
                                 onPress={() => router.replace("/")}
-                                style={{ marginRight: 18 }}
+                                style={{ marginRight: 18, padding: 4, alignContent: "center", justifyContent: "center" }}
                             >
                                 <Icon
                                     as={ArrowLeftIcon}
-                                    className="text-typography-500 m-1 w-7 h-7"
+                                    className="text-typography-900 m-1 w-7 h-7"
                                     size="xl"
                                 />
                             </Pressable>
 
-                            <Center>
-                                <Text style={styles.title}>Create an Account</Text>
-                            </Center>
+                            
+                            <HStack style={{
+                                 flex: 1, 
+                                 justifyContent: "center", 
+                                 borderWidth: 0, 
+                                 borderColor: 'black',
+                                 borderRadius: 12, 
+                                 backgroundColor: "#AFDE4E",
+                                 paddingLeft: 28,
+                                 paddingRight: 28, 
+                                 paddingTop: 13,
+                                 paddingBottom: 13
+                                   }}>
+                                <Text style={styles.title}>Terra</Text>
+                            </HStack>
+                                
                         </HStack>
+
+                         <Text
+                            style={{ 
+                                 color: 'black', 
+                                fontSize: 12, 
+                                fontFamily: "lufga",
+                            }}
+                            >Hey! new here huh, enter proper credentials and let’s monitor your terrariums health. Better that manual.</Text>
+
+                        </VStack>
 
                         <Text style={styles.label}>Email</Text>
                         <TextInput
@@ -350,14 +381,20 @@ export default function RegisterScreen() {
                             onChangeText={setConfirmPassword}
                         />
 
+                        
+                    </View>
+
+                    <Box style={{ alignContent: "center", justifyContent: "center", paddingBottom: 30, paddingTop: 10, gap: 4, }}>
+
+                        <Text style={{textAlign: "center", fontSize: 12, color: "#000000ff"}}>Let’s go and make difference</Text>
                         <Button
                             onPress={handleRegister}
                             onPressIn={() => setIsPressed(true)}
                             onPressOut={() => setIsPressed(false)}
                             style={{
-                                backgroundColor: isPressed ? "#8d8d8dff" : "#a0a0a0ff",
-                                borderRadius: 4,
-                                marginTop: 8,
+                                backgroundColor: isPressed ? "#8d8d8dff" : "#AFDE4E",
+                                borderRadius: 12,
+                                padding: 20,
                             }}
                         >
                             <ButtonText
@@ -365,16 +402,18 @@ export default function RegisterScreen() {
                                 style={{
                                     color: "#000000ff",
                                     fontSize: 16,
+                                    
                                 }}
                             >
                                 {loading ? (
                                     <Spinner size="small" color="white" />
                                 ) : (
-                                    "Create account"
+                                    "Register"
                                 )}
                             </ButtonText>
                         </Button>
-                    </View>
+
+                    </Box>
                 </Box>
             </Center>
         </>
@@ -388,14 +427,17 @@ const styles = StyleSheet.create({
         alignContent: "center",
     },
     title: {
-        fontSize: 20,
-        marginBottom: 20,
+        fontSize: 24,
+        // marginBottom: 20,
+        textAlign: "center",
+        fontWeight: "bold",
+        fontFamily: "lufga",
         color: "black",
     },
     input: {
         borderWidth: 1,
-        borderColor: "#0000005b",
-        borderRadius: 8,
+        borderColor: "rgb(172, 169, 169)",
+        borderRadius: 12,
         padding: 10,
         marginBottom: 15,
         color: "#000000ff",
@@ -405,7 +447,7 @@ const styles = StyleSheet.create({
         fontSize: 13,
         marginBottom: 4,
         marginTop: 5,
-        color: "gray",
+        color: "Black",
     },
     error: { color: "red", marginBottom: 10, textAlign: "center" },
 });

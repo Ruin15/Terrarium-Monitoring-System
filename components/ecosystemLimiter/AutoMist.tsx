@@ -348,8 +348,8 @@ export const AutoMist: React.FC = () => {
 
       {!controllerRestriction.canUpdate && (
         <HStack style={{ alignItems: 'center', gap: 8, backgroundColor: '#ffe3e3', padding: 8, borderRadius: 8 }}>
-          <AlertCircle size={16} color="#ff6b6b" />
-          <Text style={{ fontSize: 11, color: '#c92a2a', flex: 1 }}>
+          <AlertCircle size={16} color="#fa1f1f" />
+          <Text style={{ fontSize: 11, color: '#bb0f0f', flex: 1 }}>
             {controllerRestriction.reason}
           </Text>
         </HStack>
