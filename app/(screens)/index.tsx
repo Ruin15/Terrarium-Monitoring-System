@@ -10,6 +10,7 @@ import { useEcosystem, ECOSYSTEM_INFO } from '@/components/ecosystemLimiter/ecos
 import { AutoMist } from "@/components/ecosystemLimiter/AutoMist";
 import { LightCycle } from "@/components/ecosystemLimiter/LightCycle";
 import { ConnectionStatus } from "@/components/ConnectionStatus";
+import AlertTestToggle from "@/components/alertTestToggle/alertTestToggle";
 
 export default function Homepage() {
   const { ecosystem, ranges } = useEcosystem();
@@ -293,6 +294,7 @@ export default function Homepage() {
             <Text style={{ marginTop: 16, fontSize: 16, fontWeight: "600", color: "#333" }}>
               No Connection
             </Text>
+             {/* <AlertTestToggle /> */}
           </View>
          ) : (  
           <HStack style={{ gap: 4, flex: 1, borderWidth: 0, padding: 4, borderRadius: 12, justifyContent: "space-between" }}>
