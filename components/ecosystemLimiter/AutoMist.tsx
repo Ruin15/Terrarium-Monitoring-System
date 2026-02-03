@@ -31,8 +31,8 @@ export const AutoMist: React.FC = () => {
 
   const [config, setConfig] = useState<AutoMistConfig>({
     enabled: false,
-    mistDuration: 10,
-    cooldownPeriod: 10, //300
+    mistDuration: 30,
+    cooldownPeriod: 300, //300
     triggerThreshold: 'min'
   });
 
