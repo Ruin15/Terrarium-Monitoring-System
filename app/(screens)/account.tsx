@@ -632,7 +632,7 @@ export default function AccountScreen() {
                     disabled={passwordLoading}
                     onPress={handleChangePassword}
                   >
-                    <ButtonText>{passwordLoading ? "Updating..." : "Update Password"}</ButtonText>
+                    <ButtonText style={{textAlign: "center", justifyContent: "center"}}>{passwordLoading ? "Updating..." : "Update"}</ButtonText>
                   </Button>
                   <Button
                     action="secondary"
