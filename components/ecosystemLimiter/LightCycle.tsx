@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { VStack } from '@/components/ui/vstack';
 import { HStack } from '@/components/ui/hstack';
-import { Sun, Moon, Clock, AlertCircle } from 'lucide-react-native';
+import { Sun, Moon, Clock, AlertCircle, Thermometer } from 'lucide-react-native';
 import { useControl } from '@/context/controlContext';
 import { useUser } from '@/context/UserContext';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -10,18 +10,24 @@ import { db } from '@/firebase/firebaseConfig';
 import { Switch } from '@/components/ui/switch';
 import { getControllerRestriction } from '@/_helpers/controllerRestrictions';
 import { useConnection } from '@/context/ConnectionContext';
+import { useSensorData } from '@/context/sensorContext';
+import { useEcosystem } from '@/components/ecosystemLimiter/ecosystemLimiter';
 
 
 export const LightCycle: React.FC = () => {
   const { isConnected } = useConnection();
   const { lightState, setLightState } = useControl();
   const { profile, refreshProfile } = useUser();
-  
+  const { currentData } = useSensorData();
+  const { ranges } = useEcosystem();
+
   const [currentTime, setCurrentTime] = useState<string>('');
   const [isWithinSchedule, setIsWithinSchedule] = useState(false);
   const [isEnabled, setIsEnabled] = useState(true);
+  const [isTempEmergencyActive, setIsTempEmergencyActive] = useState(false);
+  const [tempEmergencyEndTime, setTempEmergencyEndTime] = useState<number | null>(null);
   const controllerRestriction = getControllerRestriction(isConnected, profile, 'AutoMist');
-  
+
   const cycleIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Day schedule: 6:30 AM - 6:00 PM (18:00)
@@ -29,6 +35,13 @@ export const LightCycle: React.FC = () => {
   const DAY_START_MINUTE = 30;
   const DAY_END_HOUR = 18;
   const DAY_END_MINUTE = 0;
+
+  // Morning warm-up window: 6:00 AM - 6:30 AM (30 minutes)
+  const WARMUP_START_HOUR = 6;
+  const WARMUP_START_MINUTE = 0;
+  const WARMUP_END_HOUR = 6;
+  const WARMUP_END_MINUTE = 30;
+  const TEMP_EMERGENCY_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 
   // Sync enabled state from profile
   useEffect(() => {
@@ -56,7 +69,7 @@ export const LightCycle: React.FC = () => {
   const handleToggleChange = async (value: boolean) => {
     setIsEnabled(value);
     await updateFirestoreStatus(value);
-    
+
     // If turning off, immediately turn off the light
     if (!value) {
       await setLightState(false);
@@ -76,12 +89,40 @@ export const LightCycle: React.FC = () => {
     const now = new Date();
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
-    
+
     const currentTotalMinutes = currentHour * 60 + currentMinute;
     const startTotalMinutes = DAY_START_HOUR * 60 + DAY_START_MINUTE;
     const endTotalMinutes = DAY_END_HOUR * 60 + DAY_END_MINUTE;
-    
+
     return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes < endTotalMinutes;
+  };
+
+  const isWithinWarmupWindow = (): boolean => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    const currentTotalMinutes = currentHour * 60 + currentMinute;
+    const warmupStartMinutes = WARMUP_START_HOUR * 60 + WARMUP_START_MINUTE;
+    const warmupEndMinutes = WARMUP_END_HOUR * 60 + WARMUP_END_MINUTE;
+
+    return currentTotalMinutes >= warmupStartMinutes && currentTotalMinutes < warmupEndMinutes;
+  };
+
+  const isTemperatureBelowMinimum = (): boolean => {
+    if (!currentData) return false;
+    return currentData.temperature < ranges.temperature.min;
+  };
+
+  const getRemainingEmergencyTime = (): string => {
+    if (!tempEmergencyEndTime) return '';
+    const now = Date.now();
+    const remaining = tempEmergencyEndTime - now;
+    if (remaining <= 0) return '';
+
+    const minutes = Math.floor(remaining / 60000);
+    const seconds = Math.floor((remaining % 60000) / 1000);
+    return `${minutes}m ${seconds}s`;
   };
 
   useEffect(() => {
@@ -90,16 +131,39 @@ export const LightCycle: React.FC = () => {
       setCurrentTime(now);
 
       const withinSchedule = isWithinDaySchedule();
+      const withinWarmup = isWithinWarmupWindow();
+      const isTempLow = isTemperatureBelowMinimum();
+
       setIsWithinSchedule(withinSchedule);
+
+      // Check if temperature emergency should activate/deactivate
+      if (isTempLow && withinWarmup && !isTempEmergencyActive) {
+        // Activate temperature emergency mode
+        setIsTempEmergencyActive(true);
+        setTempEmergencyEndTime(Date.now() + TEMP_EMERGENCY_DURATION_MS);
+      } else if (isTempEmergencyActive && tempEmergencyEndTime) {
+        // Check if emergency period has ended
+        if (Date.now() >= tempEmergencyEndTime) {
+          setIsTempEmergencyActive(false);
+          setTempEmergencyEndTime(null);
+        }
+      }
 
       // Only control light if automation is enabled
       if (isEnabled) {
         try {
-          if (withinSchedule) {
-            // Turn light ON during daytime
+          let shouldTurnOn = withinSchedule;
+
+          // Override with temperature emergency
+          if (isTempEmergencyActive && !withinSchedule) {
+            shouldTurnOn = true;
+          }
+
+          if (shouldTurnOn) {
+            // Turn light ON during daytime or during temperature emergency
             await setLightState(true);
           } else {
-            // Turn light OFF during nighttime
+            // Turn light OFF during nighttime (and outside temperature emergency)
             await setLightState(false);
           }
         } catch (error) {
@@ -116,7 +180,19 @@ export const LightCycle: React.FC = () => {
         clearInterval(cycleIntervalRef.current);
       }
     };
-  }, [isEnabled]);
+  }, [isEnabled, isTempEmergencyActive, tempEmergencyEndTime]);
+
+  // Update remaining time display more frequently when emergency is active
+  useEffect(() => {
+    if (!isTempEmergencyActive) return;
+
+    const countdownInterval = setInterval(() => {
+      // This will trigger re-render to update the countdown
+      setCurrentTime(getCurrentTime());
+    }, 1000); // Update every second during emergency
+
+    return () => clearInterval(countdownInterval);
+  }, [isTempEmergencyActive, tempEmergencyEndTime]);
 
   const formatScheduleTime = (hour: number, minute: number): string => {
     const period = hour >= 12 ? 'PM' : 'AM';
@@ -220,18 +296,22 @@ export const LightCycle: React.FC = () => {
 
           {/* Current Status */}
           <View style={styles.statusIndicator}>
-            {isWithinSchedule ? (
+            {isWithinSchedule || isTempEmergencyActive ? (
               <Sun size={24} color="#ffd43b" />
             ) : (
               <Moon size={24} color="#adb5bd" />
             )}
             <VStack style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: '600', color: '#333' }}>
-                {isWithinSchedule ? 'Daytime Period' : 'Nighttime Period'}
+                {isTempEmergencyActive
+                  ? '🔥 Temperature Emergency - Heating Mode'
+                  : (isWithinSchedule ? 'Daytime Period' : 'Nighttime Period')}
               </Text>
               <Text style={{ fontSize: 11, color: '#666' }}>
-                {isEnabled 
-                  ? (isWithinSchedule ? 'Light is ON' : 'Light is OFF')
+                {isEnabled
+                  ? (isTempEmergencyActive
+                    ? `Light forced ON for ${getRemainingEmergencyTime()}`
+                    : (isWithinSchedule ? 'Light is ON' : 'Light is OFF'))
                   : 'Automation disabled'}
               </Text>
             </VStack>
@@ -257,7 +337,20 @@ export const LightCycle: React.FC = () => {
             <View style={styles.row}>
               <Text style={styles.label}>Current Period</Text>
               <Text style={styles.value}>
-                {isWithinSchedule ? 'Daytime' : 'Nighttime'}
+                {isTempEmergencyActive ? '🔥 Emergency Heating' : (isWithinSchedule ? 'Daytime' : 'Nighttime')}
+              </Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Current Temperature</Text>
+              <Text style={[styles.value, { color: isTemperatureBelowMinimum() ? '#ff6b6b' : '#33b42f' }]}>
+                {currentData ? `${currentData.temperature.toFixed(1)}°C` : 'No data'}
+                {currentData && isTemperatureBelowMinimum() ? ' ⚠️ Low' : ''}
+              </Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Minimum Temp Threshold</Text>
+              <Text style={styles.value}>
+                {ranges.temperature.min}°C
               </Text>
             </View>
             <View style={styles.row}>
@@ -272,17 +365,32 @@ export const LightCycle: React.FC = () => {
                 {formatScheduleTime(DAY_END_HOUR, DAY_END_MINUTE)} - {formatScheduleTime(DAY_START_HOUR, DAY_START_MINUTE)}
               </Text>
             </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Emergency Heat Window</Text>
+              <Text style={styles.value}>
+                {formatScheduleTime(WARMUP_START_HOUR, WARMUP_START_MINUTE)} - {formatScheduleTime(WARMUP_END_HOUR, WARMUP_END_MINUTE)}
+              </Text>
+            </View>
           </View>
 
           {/* Info Alert */}
-          <HStack style={{ alignItems: 'center', gap: 8, backgroundColor: '#e7f5ff', padding: 8, borderRadius: 8 }}>
-            <AlertCircle size={16} color="#1971c2" />
-            <Text style={{ fontSize: 11, color: '#1971c2', flex: 1 }}>
-              {isEnabled 
-                ? `Light will automatically turn ${isWithinSchedule ? 'ON' : 'OFF'} based on the schedule. Currently in ${isWithinSchedule ? 'daytime' : 'nighttime'} period.`
-                : 'Automation is disabled. You can manually control the light from the Controls section.'}
-            </Text>
-          </HStack>
+          {isTempEmergencyActive ? (
+            <HStack style={{ alignItems: 'center', gap: 8, backgroundColor: '#ffe3e3', padding: 8, borderRadius: 8 }}>
+              <AlertCircle size={16} color="#ff6b6b" />
+              <Text style={{ fontSize: 11, color: '#c92a2a', flex: 1 }}>
+                🔥 Emergency Heating Active: Temperature is below {ranges.temperature.min}°C. LED will stay ON for thermal recovery ({getRemainingEmergencyTime()} remaining).
+              </Text>
+            </HStack>
+          ) : (
+            <HStack style={{ alignItems: 'center', gap: 8, backgroundColor: '#e7f5ff', padding: 8, borderRadius: 8 }}>
+              <AlertCircle size={16} color="#1971c2" />
+              <Text style={{ fontSize: 11, color: '#1971c2', flex: 1 }}>
+                {isEnabled
+                  ? `Light will automatically turn ${isWithinSchedule ? 'ON' : 'OFF'} based on the schedule. During morning warm-up (6:00-6:30 AM), if temperature drops below ${ranges.temperature.min}°C, LED will force ON for 30 minutes.`
+                  : 'Automation is disabled. You can manually control the light from the Controls section.'}
+              </Text>
+            </HStack>
+          )}
         </VStack>
       )}
     </View>

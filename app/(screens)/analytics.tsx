@@ -47,8 +47,8 @@ const SimpleLineChart = ({ data, metric, color, width, height }) => {
             x2={width - padding.right}
             y2={line.y}
             stroke="#3d3d3d"
-            strokeWidth="1" //3
-            strokeDasharray="1,1" //3
+            strokeWidth="3" //3
+            strokeDasharray="2,3" //3
           />
           <SvgText
             x={padding.left - 4} //8
@@ -67,7 +67,7 @@ const SimpleLineChart = ({ data, metric, color, width, height }) => {
         points={points}
         fill="none"
         stroke={color}
-        strokeWidth="1" //3
+        strokeWidth="2" //3
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -81,10 +81,10 @@ const SimpleLineChart = ({ data, metric, color, width, height }) => {
             key={index}
             cx={x}
             cy={y}
-            r="2" //4
+            r="4" //4
             fill={color}
             stroke="#3a3a3a"
-            strokeWidth="1" //2
+            strokeWidth="2" //2
           />
         );
       })}

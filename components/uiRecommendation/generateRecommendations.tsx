@@ -7,9 +7,24 @@ type data = {
     lux: number;
 };
 
+// Check if current time is within nighttime hours (6:00 PM - 6:30 AM)
+const isNighttime = (): boolean => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    const currentTotalMinutes = currentHour * 60 + currentMinute;
+    const nightStartMinutes = 18 * 60; // 6:00 PM
+    const nightEndMinutes = 6 * 60 + 30; // 6:30 AM
+
+    // Nighttime is from 18:00 to 6:30 AM (next day)
+    return currentTotalMinutes >= nightStartMinutes || currentTotalMinutes < nightEndMinutes;
+};
+
 export const generateRecommendations = (data: data, ranges: EcosystemRanges) => {
     const recommendations = [];
     let healthScore = 100;
+    const nighttimeMode = isNighttime();
 
     // Temperature analysis
     if (data.temperature < ranges.temperature.critical_low) {
@@ -130,23 +145,29 @@ export const generateRecommendations = (data: data, ranges: EcosystemRanges) => 
 
     // Light analysis
     if (data.lux < ranges.lux.critical_low) {
-        recommendations.push({
-            icon: 'Sun',
-            severity: 'danger',
-            title: 'CRITICAL: Light Too Low',
-            message: `Current: ${Math.round(data.lux)} lux. Plants cannot photosynthesize!`,
-            action: `URGENT: Increase lighting. Plants need ${ranges.lux.understory_min}-${ranges.lux.understory_max} lux minimum.`
-        });
-        healthScore -= 30;
+        // Only warn about critically low light during daytime
+        if (!nighttimeMode) {
+            recommendations.push({
+                icon: 'Sun',
+                severity: 'danger',
+                title: 'CRITICAL: Light Too Low',
+                message: `Current: ${Math.round(data.lux)} lux. Plants cannot photosynthesize!`,
+                action: `URGENT: Increase lighting. Plants need ${ranges.lux.understory_min}-${ranges.lux.understory_max} lux minimum.`
+            });
+            healthScore -= 30;
+        }
     } else if (data.lux < ranges.lux.understory_min) {
-        recommendations.push({
-            icon: 'Sun',
-            severity: 'warning',
-            title: 'Light Insufficient',
-            message: `Current: ${Math.round(data.lux)} lux. Below minimum.`,
-            action: `Increase light to ${ranges.lux.understory_min}-${ranges.lux.understory_max} lux.`
-        });
-        healthScore -= 15;
+        // Only warn about insufficient light during daytime
+        if (!nighttimeMode) {
+            recommendations.push({
+                icon: 'Sun',
+                severity: 'warning',
+                title: 'Light Insufficient',
+                message: `Current: ${Math.round(data.lux)} lux. Below minimum.`,
+                action: `Increase light to ${ranges.lux.understory_min}-${ranges.lux.understory_max} lux.`
+            });
+            healthScore -= 15;
+        }
     } else if (data.lux > ranges.lux.critical_high) {
         recommendations.push({
             icon: 'Sun',
@@ -175,14 +196,17 @@ export const generateRecommendations = (data: data, ranges: EcosystemRanges) => 
         });
     } else if (data.lux > ranges.lux.understory_max) {
         // For ecosystems without canopy_min (woodland, bog, paludarium)
-        recommendations.push({
-            icon: 'Sun',
-            severity: 'warning',
-            title: 'Light Above Optimal',
-            message: `Current: ${Math.round(data.lux)} lux. Above recommended range.`,
-            action: `Reduce to ${ranges.lux.understory_min}-${ranges.lux.understory_max} lux for best results.`
-        });
-        healthScore -= 10;
+        // Only warn about excessive light during daytime
+        if (!nighttimeMode) {
+            recommendations.push({
+                icon: 'Sun',
+                severity: 'warning',
+                title: 'Light Above Optimal',
+                message: `Current: ${Math.round(data.lux)} lux. Above recommended range.`,
+                action: `Reduce to ${ranges.lux.understory_min}-${ranges.lux.understory_max} lux for best results.`
+            });
+            healthScore -= 10;
+        }
     }
 
     // Perfect conditions
