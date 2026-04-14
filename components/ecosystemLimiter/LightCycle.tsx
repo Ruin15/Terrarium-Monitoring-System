@@ -111,7 +111,7 @@ export const LightCycle: React.FC = () => {
 
   const isTemperatureBelowMinimum = (): boolean => {
     if (!currentData) return false;
-    return currentData.temperature < ranges.temperature.min;
+    return currentData.temperature > ranges.temperature.min;
   };
 
   const getRemainingEmergencyTime = (): string => {
