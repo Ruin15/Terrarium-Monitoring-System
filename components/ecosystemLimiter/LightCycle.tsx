@@ -161,33 +161,20 @@ export const LightCycle: React.FC = () => {
       }
 
 
-      // Only control light if automation is enabled
-      // NOTE: Decision is based SOLELY on schedule and temperature conditions
-      // Current lightState from context is used only for display, NOT for control logic
       if (isEnabled || isTempEmergencyActive) {
-        try {
-          // Determine desired state based on automatic schedule only
-          let shouldTurnOn = withinSchedule;
+  try {
+    let shouldTurnOn = withinSchedule;
 
-          // Override with temperature emergency (force ON during emergency heating)
-          // 🔒 Emergency overrides EVERYTHING — light must stay ON
-          if (isTempEmergencyActive) {
-            shouldTurnOn = true;
-          }
+    // 🔒 Emergency overrides EVERYTHING — light must stay ON
+    if (isTempEmergencyActive) {
+      shouldTurnOn = true;
+    }
 
-          // Apply the automatic control without considering current light state
-          if (shouldTurnOn) {
-            // Turn light ON during daytime or during temperature emergency
-            await setLightState(true);
-          } else {
-            // Turn light OFF during nighttime (and outside temperature emergency)
-            await setLightState(false);
-          }
-        } catch (error) {
-          console.error('LightCycle: Error setting light state:', error);
-        }
-      }
-    };
+    await setLightState(shouldTurnOn);
+  } catch (error) {
+    console.error('LightCycle: Error setting light state:', error);
+  }
+}
 
     updateCycle();
     cycleIntervalRef.current = setInterval(updateCycle, 60000); // Check every minute
