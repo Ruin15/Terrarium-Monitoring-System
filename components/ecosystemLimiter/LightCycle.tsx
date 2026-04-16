@@ -67,18 +67,21 @@ export const LightCycle: React.FC = () => {
 
   // Handle toggle change
   const handleToggleChange = async (value: boolean) => {
+    // 🔒 Cannot disable automation during temperature emergency
+    if (isTempEmergencyActive) return;
+
     setIsEnabled(value);
     await updateFirestoreStatus(value);
 
-    // If turning off, immediately turn off the light
     if (!value) {
       await setLightState(false);
     } else {
-      // If turning on, apply current schedule immediately
       const withinSchedule = isWithinDaySchedule();
       await setLightState(withinSchedule);
     }
   };
+
+
 
   const getCurrentTime = () => {
     const now = new Date();
@@ -146,19 +149,33 @@ export const LightCycle: React.FC = () => {
         if (Date.now() >= tempEmergencyEndTime) {
           setIsTempEmergencyActive(false);
           setTempEmergencyEndTime(null);
+
+          // ✅ Resume normal schedule after emergency ends
+          if (isEnabled) {
+            const withinSchedule = isWithinDaySchedule();
+            await setLightState(withinSchedule);
+          } else {
+            await setLightState(false);
+          }
         }
       }
 
+
       // Only control light if automation is enabled
-      if (isEnabled) {
+      // NOTE: Decision is based SOLELY on schedule and temperature conditions
+      // Current lightState from context is used only for display, NOT for control logic
+      if (isEnabled || isTempEmergencyActive) {
         try {
+          // Determine desired state based on automatic schedule only
           let shouldTurnOn = withinSchedule;
 
-          // Override with temperature emergency
-          if (isTempEmergencyActive && !withinSchedule) {
+          // Override with temperature emergency (force ON during emergency heating)
+          // 🔒 Emergency overrides EVERYTHING — light must stay ON
+          if (isTempEmergencyActive) {
             shouldTurnOn = true;
           }
 
+          // Apply the automatic control without considering current light state
           if (shouldTurnOn) {
             // Turn light ON during daytime or during temperature emergency
             await setLightState(true);
@@ -290,6 +307,7 @@ export const LightCycle: React.FC = () => {
               <Switch
                 value={isEnabled}
                 onValueChange={handleToggleChange}
+                disabled={isTempEmergencyActive}  // 🔒 grey out during emergency
               />
             </View>
           </View>
