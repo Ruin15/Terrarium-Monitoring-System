@@ -153,9 +153,12 @@ export const LightCycle: React.FC = () => {
       setIsWithinSchedule(withinSchedule);
 
       // Check if temperature emergency should activate/deactivate
-      if (isTempLow && withinWarmup && !isTempEmergencyActive) {
-        // Activate temperature emergency mode
-        console.log('🔥 LightCycle: Temperature Emergency ACTIVATED - Low temp during warm-up window');
+      // 🔥 Emergency activates ANYTIME temperature drops below minimum (not limited to warmup window)
+      if (isTempLow && !isTempEmergencyActive) {
+        // Activate temperature emergency mode - forces light ON for 30 minutes
+        console.log('🔥 LightCycle: Temperature Emergency ACTIVATED - Temperature too low!');
+        console.log(`   Current temp: ${currentData?.temperature.toFixed(1)}°C | Minimum threshold: ${ranges.temperature.min}°C`);
+        console.log('   Light forced ON for 30-minute recovery period. All controls LOCKED.');
         setIsTempEmergencyActive(true);
         setTempEmergencyEndTime(Date.now() + TEMP_EMERGENCY_DURATION_MS);
         setEmergencyActivationCount(prev => prev + 1);
@@ -411,7 +414,13 @@ export const LightCycle: React.FC = () => {
             <View style={styles.row}>
               <Text style={styles.label}>Minimum Temp Threshold</Text>
               <Text style={styles.value}>
-                {ranges.temperature.min}°C
+                {ranges.temperature.min}°C (triggers emergency at ANY TIME)
+              </Text>
+            </View>
+            <View style={styles.row}>
+              <Text style={styles.label}>Emergency Duration</Text>
+              <Text style={styles.value}>
+                30 minutes (auto-recovery with light forced ON)
               </Text>
             </View>
             <View style={styles.row}>
@@ -424,12 +433,6 @@ export const LightCycle: React.FC = () => {
               <Text style={styles.label}>Nighttime Hours</Text>
               <Text style={styles.value}>
                 {formatScheduleTime(DAY_END_HOUR, DAY_END_MINUTE)} - {formatScheduleTime(DAY_START_HOUR, DAY_START_MINUTE)}
-              </Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Emergency Heat Window</Text>
-              <Text style={styles.value}>
-                {formatScheduleTime(WARMUP_START_HOUR, WARMUP_START_MINUTE)} - {formatScheduleTime(WARMUP_END_HOUR, WARMUP_END_MINUTE)}
               </Text>
             </View>
             {isTempEmergencyActive && (
@@ -466,7 +469,7 @@ export const LightCycle: React.FC = () => {
               <AlertCircle size={16} color="#1971c2" />
               <Text style={{ fontSize: 11, color: '#1971c2', flex: 1 }}>
                 {isEnabled
-                  ? `Light will automatically turn ${isWithinSchedule ? 'ON' : 'OFF'} based on the schedule. During morning warm-up (6:00-6:30 AM), if temperature drops below ${ranges.temperature.min}°C, LED will force ON for 30 minutes of emergency heating.`
+                  ? `Light will automatically turn ${isWithinSchedule ? 'ON' : 'OFF'} based on the schedule. If temperature drops below ${ranges.temperature.min}°C at ANY TIME, emergency heating activates automatically for 30 minutes with light forced ON and all controls locked.`
                   : 'Automation is disabled. You can manually control the light from the Controls section.'}
               </Text>
             </HStack>
