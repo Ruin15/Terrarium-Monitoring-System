@@ -32,7 +32,7 @@ export interface EcosystemRanges {
 // Define ranges for each ecosystem
 const ECOSYSTEM_RANGES: Record<EcosystemType, EcosystemRanges> = {
   tropical: {
-    temperature: { min: 30, max: 40, optimal: 27.5, critical_low: 20, critical_high: 35 },
+    temperature: { min: 50, max: 60, optimal: 27.5, critical_low: 20, critical_high: 35 },
     humidity: { min: 70, max: 90, optimal: 80, critical_low: 50, critical_high: 95 },
     moisture: { min: 40, max: 60, optimal: 50, critical_low: 25, critical_high: 70 },
     lux: {
